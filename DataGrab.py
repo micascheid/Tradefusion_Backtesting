@@ -120,3 +120,8 @@ class DataGrab:
                 timeNext = datetime.strptime(timeCompare.strip('Z'), "%Y-%m-%dT%H:%M:%S")
                 timeCompare = (timeNext + HOUR_ADD).isoformat()+"Z"
         return missing_time
+
+    #TODO
+    def timestamp_ohlcv(self):
+        #create and export easier to use json to file
+        print("export easier to use data scructure")

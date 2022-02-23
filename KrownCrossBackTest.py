@@ -16,7 +16,11 @@ class KrownCrossBackTest:
         # full_cross is when all moving averages are in aline above or below one another
         # watch_cross is when faster ema is crossing middle moving average
         # paramater to tune the dials
-            # bbwap levels, risk off 55ema and 21ema,
+            # When to enter? at cross? how far form 9 to enter? How far is acceptable to enter off 55?
+            # Take profit
+            # When to exit? at cross back over?
+                # Hard Exit
+
         #Algo trade:
             #entry: After complete cross enter within 1% of 21 if oppurtunity occurs and risk to 55 ema is 2% or less
             #exit: bbwap > 80 first, 9 cross 21 for sure out
@@ -84,6 +88,21 @@ class KrownCrossBackTest:
             bbwp.append("{:.3f}".format((count/LOOKBACK)*100))
         print("length bbwp:", len(bbwp))
         return bbwp
+
+    def entry(self):
+        bbwap_start = LOOKBACK+MA
+        ema_crosses = self.ema_crosses()
+        entry_price = 0
+        for entry in ema_crosses:
+            if ema_crosses[entry] == 'cross_up':
+
+        return print("entry")
+
+    def exit(self):
+        return print("exit")
+
+    def roi(self, entry, exit):
+        return print("roi")
 
     def __str__(self):
         kc = self.ema_crosses()
