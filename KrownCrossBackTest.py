@@ -1,6 +1,7 @@
 import talib
 from talib import abstract
 from datetime import datetime, timedelta
+import json
 
 MA = 13
 LOOKBACK = 252
@@ -95,7 +96,7 @@ class KrownCrossBackTest:
         entry_price = 0
         for entry in ema_crosses:
             if ema_crosses[entry] == 'cross_up':
-
+                print("something for now")
         return print("entry")
 
     def exit(self):

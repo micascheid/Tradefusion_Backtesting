@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
 
     # Bring in crunched data and run against backtest
-    npy_list = np.load('./Data/npy/test1.npy', allow_pickle=True)
+    npy_list = np.load('./Data/npy/test1', allow_pickle=True)
     kc1 = KrownCrossBackTest(emaL=9, emaM=21, emaH=55, data=npy_list.item())
     print(kc1)
 
