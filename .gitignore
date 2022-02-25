@@ -1,0 +1,19 @@
+# Ignore messaround files
+MessAround*.py
+
+# Ignore UsageCheck
+UsageCheck.py
+
+# Ignore pycache
+__pycache__
+
+# Ignore .iml
+*.iml
+
+# Ignore final data directories
+/Data/csv/**
+/Data/npy/**
+/Data/json/**
+!/Data/csv/.gitkeep
+!/Data/npy/.gitkeep
+!/Data/json/.gitkeep

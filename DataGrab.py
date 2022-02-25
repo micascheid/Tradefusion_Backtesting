@@ -1,3 +1,5 @@
+import json
+
 from nomics import Nomics
 import numpy as np
 from datetime import datetime, timedelta
@@ -17,7 +19,7 @@ class DataGrab:
         return nomics.Candles.get_candles(exchange=self.exchange, interval=self.tf, market=self.market, start=start, end=end)
 
     def get_data_np(self):
-        raw_np_list = self.data_conglomeration(self.start, self.end)
+        raw_list = self.data_conglomeration(self.start, self.end)
         # print("List", raw_np_list)
         #timestampBuilder = []
         openArrayBuilder = []
@@ -26,7 +28,7 @@ class DataGrab:
         closeBuilder = []
         volumeBuilder = []
 
-        for i in raw_np_list:
+        for i in raw_list:
             #timestampBuilder.append(i['timestamp'])
             openArrayBuilder.append(float(i['open']))
             highBuilder.append(float(i['high']))
@@ -42,6 +44,7 @@ class DataGrab:
         low = np.array(lowBuilder)
         close = np.array(closeBuilder)
         volume = np.array(volumeBuilder)
+
         return {
             'meta': meta,
             'open': openArray,
@@ -49,7 +52,7 @@ class DataGrab:
             'low': low,
             'close': close,
             'volume': volume
-        }
+        }, raw_list
 
     #TODO
     def get_data_csv(self):
@@ -96,9 +99,14 @@ class DataGrab:
 
         return mainList
 
-    def np_export_data(self):
-        np_list = self.get_data_np()
-        np.save(self.file, np_list, allow_pickle=True)
+    def export_data(self):
+        np_list, raw_list = self.get_data_np()
+        np.save('./Data/npy/'+self.file+".npy", np_list, allow_pickle=True)
+
+        json_string = json.dumps(raw_list)
+        file = open('./Data/json/'+self.file, 'w')
+        file.write(json_string)
+        file.close()
 
     def get_np_list(self):
         npy_list = np.load(self.file, allow_pickle=True)
