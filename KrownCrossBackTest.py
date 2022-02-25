@@ -6,14 +6,17 @@ import json
 MA = 13
 LOOKBACK = 252
 class KrownCrossBackTest:
-    def __init__(self, emaL, emaM, emaH, data):
+    def __init__(self, emaL, emaM, emaH, np_data, json_data):
         self.emaL = emaL
         self.emaM = emaM
         self.emaH = emaH
-        self.data = data
-        self.start = data['meta'][0]
-        self.tf = data['meta'][1]
+        self.np_data = np_data
+        self.start = np_data['meta'][0]
+        self.tf = np_data['meta'][1]
+        self.json_data = json_data
     def ema_crosses(self):
+        # emaH has not been evaulated above 55h time period and may see invalid results above that
+            # start crossing analysis at emaH*4
         # full_cross is when all moving averages are in aline above or below one another
         # watch_cross is when faster ema is crossing middle moving average
         # paramater to tune the dials
@@ -27,11 +30,13 @@ class KrownCrossBackTest:
             #exit: bbwap > 80 first, 9 cross 21 for sure out
             #stop: close below emaH
 
+        cross_start = self.emaH*4
         EMA = abstract.Function('EMA')
-        #print(self.data)
-        emaL = EMA(self.data, self.emaL)
-        emaM = EMA(self.data, self.emaM)
-        emaH = EMA(self.data, self.emaH)
+        #print(self.np_data)
+        emaL = EMA(self.np_data, self.emaL)
+        emaM = EMA(self.np_data, self.emaM)
+        emaH = EMA(self.np_data, self.emaH)
+
         cross_occurence = {}
         cross_occurence_list = []
         cross_up = False
@@ -41,7 +46,7 @@ class KrownCrossBackTest:
         bbwp_start_time = self.start + timedelta(hours=LOOKBACK+MA)
         if len(emaL) == len(emaM) == len(emaH):
             #Establish Baseline, where are the ema's current position at start of analysis?
-            l_start, m_start, h_start = emaL[self.emaH], emaM[self.emaH], emaH[self.emaH]
+            l_start, m_start, h_start = emaL[cross_start], emaM[cross_start], emaH[cross_start]
             if l_start > m_start > h_start:
                 cross_up, cross_down = True, False
             elif l_start < m_start < h_start:
@@ -49,14 +54,15 @@ class KrownCrossBackTest:
             else:
                 cross_up, cross_down = False, False
 
-            for i in range(self.emaH, len(emaL)):
+            for i in range(cross_start, len(emaL)):
                 el, em, eh = emaL[i], emaM[i], emaH[i]
                 if el > em > eh and cross_up == False:
                     cross_up, cross_down, new_cross = True, False, True
-                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()] = "cross_up"
+                    print(el, em, eh)
+                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = "cross_up"
                 if el < em < eh and cross_down == False:
                     cross_up, cross_down, new_cross = False, True, True
-                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()] = "cross_down"
+                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = "cross_down"
                 if new_cross:
                     total_crosses += 1
                 new_cross = False
@@ -71,11 +77,11 @@ class KrownCrossBackTest:
         STD = 2.0
         MATYPE=0 #0 Represents SMA look up docs for other options
         BBANDS = abstract.Function('BBANDS', MA, STD, STD, MATYPE)
-        #talib.BBANDS(self.data['close'], timeperiod=13, matype=0)
-        upper, middle, lower = BBANDS(self.data)
+        #talib.BBANDS(self.np_data['close'], timeperiod=13, matype=0)
+        upper, middle, lower = BBANDS(self.np_data)
         bbw = []
         bbwp = []
-        price = self.data['close']
+        price = self.np_data['close']
         for i in range(len(price)):
             width = ((upper[i]-lower[i])/middle[i])
             bbw.append(width)
@@ -92,12 +98,14 @@ class KrownCrossBackTest:
 
     def entry(self):
         bbwap_start = LOOKBACK+MA
-        ema_crosses = self.ema_crosses()
+        ema_crosses = self.ema_crosses()["cross_occurrences"]
         entry_price = 0
         for entry in ema_crosses:
             if ema_crosses[entry] == 'cross_up':
-                print("something for now")
-        return print("entry")
+                for x in self.json_data:
+                    if x['timestamp'] == entry:
+                        entry_price = x['close']
+                        print(entry_price)
 
     def exit(self):
         return print("exit")

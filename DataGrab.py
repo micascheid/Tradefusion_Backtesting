@@ -101,10 +101,10 @@ class DataGrab:
 
     def export_data(self):
         np_list, raw_list = self.get_data_np()
-        np.save(self.file+".npy", np_list, allow_pickle=True)
+        np.save('./Data/npy/'+self.file+".npy", np_list, allow_pickle=True)
 
         json_string = json.dumps(raw_list)
-        file = open(self.file,'w')
+        file = open('./Data/json/'+self.file, 'w')
         file.write(json_string)
         file.close()
 
