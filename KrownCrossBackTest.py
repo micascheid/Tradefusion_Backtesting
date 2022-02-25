@@ -5,15 +5,22 @@ import json
 
 MA = 13
 LOOKBACK = 252
+EMA = abstract.Function('EMA')
+
+
 class KrownCrossBackTest:
     def __init__(self, emaL, emaM, emaH, np_data, json_data):
+        self.np_data = np_data
         self.emaL = emaL
         self.emaM = emaM
         self.emaH = emaH
-        self.np_data = np_data
+        self.emaLL = EMA(self.np_data, self.emaL)
+        self.emaML = EMA(self.np_data, self.emaM)
+        self.emaHL = EMA(self.np_data, self.emaH)
         self.start = np_data['meta'][0]
         self.tf = np_data['meta'][1]
         self.json_data = json_data
+
     def ema_crosses(self):
         # emaH has not been evaulated above 55h time period and may see invalid results above that
             # start crossing analysis at emaH*4
@@ -31,11 +38,6 @@ class KrownCrossBackTest:
             #stop: close below emaH
 
         cross_start = self.emaH*4
-        EMA = abstract.Function('EMA')
-        #print(self.np_data)
-        emaL = EMA(self.np_data, self.emaL)
-        emaM = EMA(self.np_data, self.emaM)
-        emaH = EMA(self.np_data, self.emaH)
 
         cross_occurence = {}
         cross_occurence_list = []
@@ -44,9 +46,9 @@ class KrownCrossBackTest:
         new_cross = False
         total_crosses = 0
         bbwp_start_time = self.start + timedelta(hours=LOOKBACK+MA)
-        if len(emaL) == len(emaM) == len(emaH):
+        if len(self.emaLL) == len(self.emaML) == len(self.emaHL):
             #Establish Baseline, where are the ema's current position at start of analysis?
-            l_start, m_start, h_start = emaL[cross_start], emaM[cross_start], emaH[cross_start]
+            l_start, m_start, h_start = self.emaLL[cross_start], self.emaML[cross_start], self.emaHL[cross_start]
             if l_start > m_start > h_start:
                 cross_up, cross_down = True, False
             elif l_start < m_start < h_start:
@@ -54,11 +56,10 @@ class KrownCrossBackTest:
             else:
                 cross_up, cross_down = False, False
 
-            for i in range(cross_start, len(emaL)):
-                el, em, eh = emaL[i], emaM[i], emaH[i]
+            for i in range(cross_start, len(self.emaLL)):
+                el, em, eh = self.emaLL[i], self.emaML[i], self.emaHL[i]
                 if el > em > eh and cross_up == False:
                     cross_up, cross_down, new_cross = True, False, True
-                    print(el, em, eh)
                     cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = "cross_up"
                 if el < em < eh and cross_down == False:
                     cross_up, cross_down, new_cross = False, True, True
@@ -96,7 +97,21 @@ class KrownCrossBackTest:
         print("length bbwp:", len(bbwp))
         return bbwp
 
+    def krown_cross_json_export(self):
+        # Description: After the emaL, emaM, emaH, bbwap, and cross arrays have been created
+            # this function export that information in a list of json objects to a file
+            # under Data/krowncross/ for easier analysis on determing entry, exit and W/L
+        print("Exporting list of krown cross data to file")
+        json_data = self.json_data
+        occurences = self.ema_crosses()['cross_occurrences']
+        bbwap = self.bbwp()
+        emaL = self.emaLL
+        emaM = self.emaML
+        emaH = self.emaHL
+
+
     def entry(self):
+        #start off w basic entry where cross occurs
         bbwap_start = LOOKBACK+MA
         ema_crosses = self.ema_crosses()["cross_occurrences"]
         entry_price = 0
@@ -105,7 +120,11 @@ class KrownCrossBackTest:
                 for x in self.json_data:
                     if x['timestamp'] == entry:
                         entry_price = x['close']
-                        print(entry_price)
+            if ema_crosses[entry] == 'cross_down':
+                for x in self.json_data:
+                    if x['timestamp'] == entry:
+                        entry_price = x['close']
+
 
     def exit(self):
         return print("exit")

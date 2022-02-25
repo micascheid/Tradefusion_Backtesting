@@ -20,11 +20,11 @@ if __name__ == '__main__':
     # window.mainloop()
 
     # Aquire the desired data
-    start = datetime(year=2022, month=2, day=1, hour=0, minute=0, second=0)
-    end = datetime(year=2022, month=2, day=24, hour=23, minute=0, second=0)
-
-    dg1 = DataGrab(exchange="gdax", tf="1h", market="BTC-USD", start=start, end=end, file=file_name)
-    dg1.export_data()
+    # start = datetime(year=2022, month=2, day=1, hour=0, minute=0, second=0)
+    # end = datetime(year=2022, month=2, day=24, hour=23, minute=0, second=0)
+    #
+    # dg1 = DataGrab(exchange="gdax", tf="1h", market="BTC-USD", start=start, end=end, file=file_name)
+    # dg1.export_data()
 
     #start2 = datetime.strptime(input("Start time as %Y-%m-%d %H:%M:%S| "), "%Y-%m-%d %H:%M:%S")
     #2022-01-01 00:00:00
@@ -38,8 +38,8 @@ if __name__ == '__main__':
         json_file.close()
     kc1 = KrownCrossBackTest(emaL=9, emaM=21, emaH=55, np_data=npy_list.item(), json_data=json_data)
     print(kc1)
-    #kc1.entry()
+    # kc1.entry()
 
     # kc1 = KrownCrossBackTest(emaL=9, emaM=21, emaH=55, start=start, end=end)
     #
-    kc1.ema_crosses()
+    #kc1.ema_crosses()
