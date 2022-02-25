@@ -11,6 +11,6 @@ __pycache__
 *.iml
 
 # Ignore final data pulls
-./Data/npy/*
-./Data/csv/*
-./Data/json/*
+./Data/npy/**
+./Data/csv/**
+./Data/json/**
