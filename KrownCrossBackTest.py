@@ -108,7 +108,7 @@ class KrownCrossBackTest:
         emaL = self.emaLL
         emaM = self.emaML
         emaH = self.emaHL
-
+        #making small change here to see if I'm updated now
 
     def entry(self):
         #start off w basic entry where cross occurs
