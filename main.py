@@ -11,7 +11,7 @@ np.set_printoptions(threshold=sys.maxsize)
 
 # nomics api key: m_419a355b4a2283777a4aa1a6590c43ffb409fe5a
 if __name__ == '__main__':
-    file_name = './test2'
+    file_name = './test1'
     npy_file = './Data/npy/'+file_name+'.npy'
     json_file = './Data/json/'+file_name
     # window = tk.Tk(screenName="test")
@@ -38,8 +38,8 @@ if __name__ == '__main__':
         json_file.close()
     kc1 = KrownCrossBackTest(emaL=9, emaM=21, emaH=55, np_data=npy_list.item(), json_data=json_data)
     print(kc1)
-    #kc1.entry()
+    # kc1.entry()
 
     # kc1 = KrownCrossBackTest(emaL=9, emaM=21, emaH=55, start=start, end=end)
     #
-    kc1.ema_crosses()
+    #kc1.ema_crosses()
