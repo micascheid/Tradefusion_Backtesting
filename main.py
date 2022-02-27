@@ -43,3 +43,6 @@ if __name__ == '__main__':
     # kc1 = KrownCrossBackTest(emaL=9, emaM=21, emaH=55, start=start, end=end)
     #
     #kc1.ema_crosses()
+
+    def test_link():
+        print("test commit linage")
