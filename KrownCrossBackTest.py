@@ -74,6 +74,55 @@ class KrownCrossBackTest:
                 "total_crosses": total_crosses,
                 "cross_occurrences": cross_occurence}
 
+    def ema_crosses_2(self):
+        #bbwap start:
+        #ema start: length is same as raw_json
+        cross_start = self.emaH*4
+        cross_occurence = {}
+        cross_occurence_list = []
+        cross_up = False
+        cross_down = False
+        new_cross = False
+        total_crosses = 0
+        current_cross = 'none'
+        bbwp_start_time = self.start + timedelta(hours=LOOKBACK+MA)
+        if len(self.emaLL) == len(self.emaML) == len(self.emaHL):
+            #Establish Baseline, where are the ema's current position at start of analysis?
+            l_start, m_start, h_start = self.emaLL[cross_start], self.emaML[cross_start], self.emaHL[cross_start]
+            if l_start > m_start > h_start:
+                cross_up, cross_down = True, False
+            elif l_start < m_start < h_start:
+                cross_up, cross_down = False, True
+            else:
+                cross_up, cross_down = False, False
+
+            for i in range(cross_start, len(self.emaLL)):
+                el, em, eh = self.emaLL[i], self.emaML[i], self.emaHL[i]
+                if el > em > eh and cross_up == False:
+                    cross_up, cross_down, new_cross = True, False, True
+                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = "cross_up"
+                    cross_occurence_list.append(((self.start+timedelta(hours=i)).isoformat()+"Z", "cross_up"))
+                    current_cross = "cross_up"
+                if el < em < eh and cross_down == False:
+                    cross_up, cross_down, new_cross = False, True, True
+                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = "cross_down"
+                    cross_occurence_list.append(((self.start + timedelta(hours=i)).isoformat() + "Z", "cross_down"))
+                    current_cross="cross_down"
+                if new_cross:
+                    total_crosses += 1
+                if not new_cross:
+                    cross_occurence[(self.start + timedelta(hours=i)).isoformat() + "Z"] = current_cross+"_cont"
+                    cross_occurence_list.append(((self.start + timedelta(hours=i)).isoformat() + "Z", current_cross+"_cont"))
+                new_cross = False
+        else:
+            return -1
+        return {"start": self.start,
+                "timeframe": self.tf,
+                "total_crosses": total_crosses,
+                "cross_occurrences": cross_occurence,
+                "cross_list": cross_occurence_list}
+
+
     def bbwp(self):
         STD = 2.0
         MATYPE=0 #0 Represents SMA look up docs for other options
@@ -86,7 +135,7 @@ class KrownCrossBackTest:
         for i in range(len(price)):
             width = ((upper[i]-lower[i])/middle[i])
             bbw.append(width)
-        print("length bbw:", len(bbw))
+        print("length bbwp:", len(bbw))
         for j in range((LOOKBACK+MA)-1, len(bbw)):
             count = 0
             current_bbw = bbw[j]
@@ -108,7 +157,30 @@ class KrownCrossBackTest:
         emaL = self.emaLL
         emaM = self.emaML
         emaH = self.emaHL
-        #making small change here to see if I'm updated now
+        cross_list = self.ema_crosses_2()['cross_list']
+
+        # Deterine start point in which data is useful
+            # which ever is greatest bbwap(Lookback + MA) or emaH*4
+        ema_start = self.emaH*4
+        start_time = ema_start if ema_start > LOOKBACK+MA else LOOKBACK+MA
+        bbwp = self.bbwp()
+        kc_list = []
+        #start = datetime(year=2022, month=1, day=1, hour=0, minute=0, second=0).isoformat()+"Z"
+
+        for x in range(start_time, len(self.json_data)):
+            kc_dict = {"timestamp": str(self.json_data[x]['timestamp']),
+                    "close": str(self.json_data[x]['close']),
+                    "cross_status": str(cross_list[x-ema_start]),
+                    "bbwap": str(bbwp[(x-start_time)+1]),
+                    "emaL": str(emaL[x]),
+                    "emaM": str(emaM[x]),
+                    "emaH": str(emaH[x])}
+            kc_list.append(kc_dict)
+            #start = (start + timedelta(hours=1)).isoformat()+"Z"
+        file = open('./Data/kc/kc1', "w")
+        file.write(json.dumps(kc_list))
+        file.close()
+
 
     def entry(self):
         #start off w basic entry where cross occurs

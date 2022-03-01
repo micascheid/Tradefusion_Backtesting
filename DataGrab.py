@@ -95,7 +95,7 @@ class DataGrab:
             json_obj = self.apiCall(start=startNew.isoformat()+"Z", end=end.isoformat()+"Z")
             for k in json_obj:
                 mainList.append(k)
-            print(iteration+1, "|", startNew, end)
+            print(iteration, "|", startNew, end)
 
         return mainList
 
