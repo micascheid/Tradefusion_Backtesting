@@ -2,6 +2,7 @@ import talib
 from talib import abstract
 from datetime import datetime, timedelta
 import json
+from KCObj import KCObj
 
 MA = 13
 LOOKBACK = 252
@@ -80,8 +81,10 @@ class KrownCrossBackTest:
         cross_start = self.emaH*4
         cross_occurence = {}
         cross_occurence_list = []
-        cross_up = False
-        cross_down = False
+        CROSS_UP_S = "cross_up"
+        CROSS_DOWN_S = "cross_down"
+        CONT = "_cont"
+        LIMBO = "_limbo"
         new_cross = False
         total_crosses = 0
         current_cross = 'none'
@@ -98,21 +101,31 @@ class KrownCrossBackTest:
 
             for i in range(cross_start, len(self.emaLL)):
                 el, em, eh = self.emaLL[i], self.emaML[i], self.emaHL[i]
-                if el > em > eh and cross_up == False:
+                if el > em > eh and not cross_up:
                     cross_up, cross_down, new_cross = True, False, True
-                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = "cross_up"
-                    cross_occurence_list.append(((self.start+timedelta(hours=i)).isoformat()+"Z", "cross_up"))
+                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = CROSS_UP_S
+                    cross_occurence_list.append(((self.start+timedelta(hours=i)).isoformat()+"Z", CROSS_UP_S))
                     current_cross = "cross_up"
-                if el < em < eh and cross_down == False:
+                if el < em < eh and not cross_down:
                     cross_up, cross_down, new_cross = False, True, True
-                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = "cross_down"
-                    cross_occurence_list.append(((self.start + timedelta(hours=i)).isoformat() + "Z", "cross_down"))
-                    current_cross="cross_down"
+                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = CROSS_DOWN_S
+                    cross_occurence_list.append(((self.start + timedelta(hours=i)).isoformat() + "Z", CROSS_DOWN_S))
+                    current_cross = "cross_down"
                 if new_cross:
                     total_crosses += 1
-                if not new_cross:
-                    cross_occurence[(self.start + timedelta(hours=i)).isoformat() + "Z"] = current_cross+"_cont"
-                    cross_occurence_list.append(((self.start + timedelta(hours=i)).isoformat() + "Z", current_cross+"_cont"))
+                #Check to see if a limbo occurence exists
+                if CROSS_UP_S in current_cross and not new_cross and el < em:
+                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = CROSS_UP_S + LIMBO
+                    cross_occurence_list.append(((self.start+timedelta(hours=i)).isoformat() + "Z", current_cross +
+                                                 LIMBO))
+                elif CROSS_DOWN_S in current_cross and not new_cross and el > em:
+                    cross_occurence[(self.start + timedelta(hours=i)).isoformat() + "Z"] = CROSS_DOWN_S + LIMBO
+                    cross_occurence_list.append(((self.start + timedelta(hours=i)).isoformat() + "Z", current_cross +
+                                                 LIMBO))
+                elif not new_cross:
+                    cross_occurence[(self.start + timedelta(hours=i)).isoformat() + "Z"] = current_cross + CONT
+                    cross_occurence_list.append(((self.start + timedelta(hours=i)).isoformat() + "Z", current_cross +
+                                                 CONT))
                 new_cross = False
         else:
             return -1
@@ -121,7 +134,6 @@ class KrownCrossBackTest:
                 "total_crosses": total_crosses,
                 "cross_occurrences": cross_occurence,
                 "cross_list": cross_occurence_list}
-
 
     def bbwp(self):
         STD = 2.0
@@ -135,7 +147,6 @@ class KrownCrossBackTest:
         for i in range(len(price)):
             width = ((upper[i]-lower[i])/middle[i])
             bbw.append(width)
-        print("length bbwp:", len(bbw))
         for j in range((LOOKBACK+MA)-1, len(bbw)):
             count = 0
             current_bbw = bbw[j]
@@ -143,7 +154,6 @@ class KrownCrossBackTest:
                 if bbw[k] < current_bbw:
                     count += 1
             bbwp.append("{:.3f}".format((count/LOOKBACK)*100))
-        print("length bbwp:", len(bbwp))
         return bbwp
 
     def krown_cross_json_export(self):
@@ -170,7 +180,7 @@ class KrownCrossBackTest:
         for x in range(start_time, len(self.json_data)):
             kc_dict = {"timestamp": str(self.json_data[x]['timestamp']),
                     "close": str(self.json_data[x]['close']),
-                    "cross_status": str(cross_list[x-ema_start]),
+                    "cross_status": str(cross_list[x-ema_start][1]),
                     "bbwap": str(bbwp[(x-start_time)+1]),
                     "emaL": str(emaL[x]),
                     "emaM": str(emaM[x]),
@@ -181,28 +191,72 @@ class KrownCrossBackTest:
         file.write(json.dumps(kc_list))
         file.close()
 
+    def kc_load(self):
+        file = open('./Data/kc/kc1', "r")
+        return json.load(file)
 
-    def entry(self):
-        #start off w basic entry where cross occurs
-        bbwap_start = LOOKBACK+MA
-        ema_crosses = self.ema_crosses()["cross_occurrences"]
-        entry_price = 0
-        for entry in ema_crosses:
-            if ema_crosses[entry] == 'cross_up':
-                for x in self.json_data:
-                    if x['timestamp'] == entry:
-                        entry_price = x['close']
-            if ema_crosses[entry] == 'cross_down':
-                for x in self.json_data:
-                    if x['timestamp'] == entry:
-                        entry_price = x['close']
+    def entry_exit(self):
+        # Returns a list of tuples(entry, exit)
+        # Algo trade:
+        # entry: After complete cross enter within 1% of 21 if oppurtunity occurs and risk to 55 ema is 2% or less
+        # exit: bbwap > 80 first, 9 cross 21 for sure out
+        # stop: close below emaH
+        kc_data = self.kc_load()
+        positions = []
+        global entry
+        global exit
+        long_bias = False
+        ema_mid_tolerance = 5
+        ema_high_tolerance = 2
+        last_entry = ""
+        last_exit_time = datetime.strptime(kc_data[0]['timestamp'].strip('Z'), "%Y-%m-%dT%H:%M:%S")
+        global in_trade
+        in_trade = False
+        LIMBO = "limbo"
+        for x in kc_data:
+            # convert json_obj variables back
+            kc_obj = KCObj(x)
+
+            timestamp, close, cross_status, bbwap, emaL, emaM, emaH = kc_obj.timestamp, kc_obj.close, \
+                                                                      kc_obj.cross_status, kc_obj.bbwap, kc_obj.emaL,\
+                                                                      kc_obj.emaM, kc_obj.emaH
+            #looking for an entry
+            if not in_trade:
+                if "up" in cross_status and not (LIMBO in cross_status):
+                    long_bias = True
+                # if "down" in x["cross_status"]:
+                #     long_bias = False
+
+                if long_bias:
+                    ema_low_dif = ((close-emaL)/close)*100
+                    ema_mid_dif = ((close-emaM)/close)*100
+                    ema_high_dif = ((close-emaH)/close)*100
+                    if ema_mid_dif <= ema_mid_tolerance and not (LIMBO in cross_status):
+                        entry = kc_obj
+                        in_trade = True
+                        continue
+                # else:
+                #     ema_low_dif = ((emaL-close)/emaL)*100
+                #     ema_mid_dif = ((emaM-close)/emaM)*100
+                #     ema_high_dif = ((emaH-close)/emaH)*100
+
+                # if ema_high_dif > ema_high_tolerance:
+                #     print("")
 
 
-    def exit(self):
-        return print("exit")
+            #looking for an exit
+            #TODO looking for an exit on long
+            if in_trade and emaL <= emaM:
+                positions.append((entry.close, kc_obj.close))
+                long_bias = False
+                in_trade = False
 
-    def roi(self, entry, exit):
-        return print("roi")
+            #TODO looking for an exit on short
+
+        return positions
+
+    def roi(self):
+        positions = self.entry_exit()
 
     def __str__(self):
         kc = self.ema_crosses()
