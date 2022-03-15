@@ -95,7 +95,7 @@ class DataGrab:
             json_obj = self.apiCall(start=startNew.isoformat()+"Z", end=end.isoformat()+"Z")
             for k in json_obj:
                 mainList.append(k)
-            print(iteration+1, "|", startNew, end)
+            print(iteration, "|", startNew, end)
 
         return mainList
 
@@ -118,13 +118,13 @@ class DataGrab:
         missing_time = []
 
         for x in range(len(results)):
-            while timeCompare != results[x]['timestamp']:
-                missing_time.append(timeCompare)
-                timeNext = datetime.strptime(timeCompare.strip('Z'), "%Y-%m-%dT%H:%M:%S")
-                timeCompare = (timeNext + HOUR_ADD).isoformat()+"Z"
+            while time_compare != results[x]['timestamp']:
+                missing_time.append(time_compare)
+                timeNext = datetime.strptime(time_compare.strip('Z'), "%Y-%m-%dT%H:%M:%S")
+                time_compare = (timeNext + HOUR_ADD).isoformat()+"Z"
 
 
-            if timeCompare == results[x]['timestamp']:
-                timeNext = datetime.strptime(timeCompare.strip('Z'), "%Y-%m-%dT%H:%M:%S")
-                timeCompare = (timeNext + HOUR_ADD).isoformat()+"Z"
+            if time_compare == results[x]['timestamp']:
+                timeNext = datetime.strptime(time_compare.strip('Z'), "%Y-%m-%dT%H:%M:%S")
+                time_compare = (timeNext + HOUR_ADD).isoformat()+"Z"
         return missing_time

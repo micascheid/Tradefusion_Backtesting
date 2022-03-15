@@ -20,8 +20,8 @@ if __name__ == '__main__':
     # window.mainloop()
 
     # Aquire the desired data
-    # start = datetime(year=2022, month=2, day=1, hour=0, minute=0, second=0)
-    # end = datetime(year=2022, month=2, day=24, hour=23, minute=0, second=0)
+    # start = datetime(year=2022, month=1, day=1, hour=0, minute=0, second=0)
+    # end = datetime(year=2022, month=2, day=26, hour=23, minute=0, second=0)
     #
     # dg1 = DataGrab(exchange="gdax", tf="1h", market="BTC-USD", start=start, end=end, file=file_name)
     # dg1.export_data()
@@ -37,8 +37,17 @@ if __name__ == '__main__':
         json_data = json.load(json_file)
         json_file.close()
     kc1 = KrownCrossBackTest(emaL=9, emaM=21, emaH=55, np_data=npy_list.item(), json_data=json_data)
-    print(kc1)
-    # kc1.entry()
+    #kc1.krown_cross_json_export()
+    #print(kc1)
+    #bbwp = kc1.bbwp()
+    # print(kc1.ema_crosses()['total_crosses'])
+    # print(kc1.entry_exit())
+    # average_roi_list = []
+    # for x in kc1.entry_exit():
+    #     average_roi_list.append(((x[1]/x[0])/x[1])*100)
+    # print(average_roi_list)
+    # average_roi = sum(average_roi_list)/len(average_roi_list)
+    # print(average_roi)
 
     # kc1 = KrownCrossBackTest(emaL=9, emaM=21, emaH=55, start=start, end=end)
     #

@@ -14,9 +14,11 @@ __pycache__
 /Data/csv/**
 /Data/npy/**
 /Data/json/**
+/Data/kc/**
 !/Data/csv/.gitkeep
 !/Data/npy/.gitkeep
 !/Data/json/.gitkeep
+!/Data/kc/.gitkeep
 
 # Ignore ./idea
 .idea/
