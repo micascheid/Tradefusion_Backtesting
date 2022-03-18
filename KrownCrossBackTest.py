@@ -198,15 +198,28 @@ class KrownCrossBackTest:
     def entry_exit(self):
         # Returns a list of tuples(entry, exit)
         # Algo trade:
-        # entry: After complete cross enter within 1% of 21 if oppurtunity occurs and risk to 55 ema is 2% or less
-        # exit: bbwap > 80 first, 9 cross 21 for sure out
-        # stop: close below emaH
+        #Risk Management: GTFO
+            # stop 1: close above or below 55e
+            # Expidited: above or below previous swing high/low - Note: bring in later as pivots are not calculated rn
+        #Entry:
+            # a.)
+            # b.) Can start an entry with a close around 21 if more aggressive 55 if more conservative : Roger
+            # c.) confirmation of rsi divergence : Negative
+            # d.) low or downtrending bbwp : Roger
+        #Exit: Which ever of the following comes first
+            # a.) RSI divergence : Negative
+            # b.) BBWP > 80 or 90 : Positive
+            # c.) 9e crossing 21e
+        # Invalidation:
+            # hourly trend is against daily trend or suggests caution
+            #
+        # Other thoughts: Checking which regime BTC is in regarding bull market support band
         kc_data = self.kc_load()
         positions = []
         global entry
         global exit
         long_bias = False
-        ema_mid_tolerance = 5
+        ema_mid_tolerance = 1
         ema_high_tolerance = 2
         last_entry = ""
         last_exit_time = datetime.strptime(kc_data[0]['timestamp'].strip('Z'), "%Y-%m-%dT%H:%M:%S")
@@ -228,10 +241,11 @@ class KrownCrossBackTest:
                 #     long_bias = False
 
                 if long_bias:
-                    ema_low_dif = ((close-emaL)/close)*100
-                    ema_mid_dif = ((close-emaM)/close)*100
-                    ema_high_dif = ((close-emaH)/close)*100
-                    if ema_mid_dif <= ema_mid_tolerance and not (LIMBO in cross_status):
+                    # open*x=exit
+                    ema_low_dif = (emaL/close)-1
+                    ema_mid_dif = (emaM/close)-1
+                    ema_high_dif = (emaH/close)-1
+                    if ema_mid_dif <= ema_mid_tolerance and not (LIMBO in cross_status) and kc_obj.bbwap <= 10:
                         entry = kc_obj
                         in_trade = True
                         continue
@@ -246,10 +260,16 @@ class KrownCrossBackTest:
 
             #looking for an exit
             #TODO looking for an exit on long
-            if in_trade and emaL <= emaM:
-                positions.append((entry.close, kc_obj.close))
-                long_bias = False
-                in_trade = False
+            if in_trade:
+                if kc_obj.bbwap >= 95:
+                    positions.append((entry.close, kc_obj.close))
+                    long_bias = False
+                    in_trade = False
+                    continue
+                # if emaL <= emaM: #GTFO scenario
+                #     positions.append((entry.close, kc_obj.close))
+                #     long_bias = False
+                #     in_trade = False
 
             #TODO looking for an exit on short
 
