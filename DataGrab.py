@@ -1,10 +1,11 @@
 import json
-
+import API
 from nomics import Nomics
 import numpy as np
 from datetime import datetime, timedelta
+
+
 class DataGrab:
-    nomics = Nomics('m_419a355b4a2283777a4aa1a6590c43ffb409fe5a')
     start = 0
     def __init__(self, exchange, tf, market, start, end, file):
         self.exchange = exchange
@@ -13,10 +14,12 @@ class DataGrab:
         self.start = start
         self.end = end
         self.file = file
+        self.nomics = API.KEY
 
     def apiCall(self, start, end):
-        nomics = Nomics('m_419a355b4a2283777a4aa1a6590c43ffb409fe5a')
-        return nomics.Candles.get_candles(exchange=self.exchange, interval=self.tf, market=self.market, start=start, end=end)
+        # nomics = Nomics('m_419a355b4a2283777a4aa1a6590c43ffb409fe5a')
+        return self.nomics.Candles.get_candles(exchange=self.exchange, interval=self.tf, market=self.market,
+                                               start=start, end=end)
 
     def get_data_np(self):
         raw_list = self.data_conglomeration(self.start, self.end)
@@ -53,6 +56,8 @@ class DataGrab:
             'close': close,
             'volume': volume
         }, raw_list
+
+
 
     #TODO
     def get_data_csv(self):
@@ -109,8 +114,8 @@ class DataGrab:
         file.close()
 
     def get_np_list(self):
-        npy_list = np.load(self.file, allow_pickle=True)
-        return npy_list.item()
+        npy_lists = np.load(self.file, allow_pickle=True)
+        return npy_lists.item()
 
     def check_data_set_times(self, results):
         HOUR_ADD = timedelta(hours=1)
@@ -122,8 +127,6 @@ class DataGrab:
                 missing_time.append(time_compare)
                 timeNext = datetime.strptime(time_compare.strip('Z'), "%Y-%m-%dT%H:%M:%S")
                 time_compare = (timeNext + HOUR_ADD).isoformat()+"Z"
-
-
             if time_compare == results[x]['timestamp']:
                 timeNext = datetime.strptime(time_compare.strip('Z'), "%Y-%m-%dT%H:%M:%S")
                 time_compare = (timeNext + HOUR_ADD).isoformat()+"Z"

@@ -1,4 +1,3 @@
-import talib
 from talib import abstract
 from datetime import datetime, timedelta
 import json
@@ -184,7 +183,8 @@ class KrownCrossBackTest:
                     "bbwap": str(bbwp[(x-start_time)+1]),
                     "emaL": str(emaL[x]),
                     "emaM": str(emaM[x]),
-                    "emaH": str(emaH[x])}
+                    "emaH": str(emaH[x]),
+                    "dailytrend": str()}
             kc_list.append(kc_dict)
             #start = (start + timedelta(hours=1)).isoformat()+"Z"
         file = open('./Data/kc/kc1', "w")
