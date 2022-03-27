@@ -14,7 +14,8 @@ class DailyTrend:
         self.base = base
         self.np_file = "./Data/dailytrend/" + self.base + ".npy"
         self.raw_json_file = "./Data/json/" + self.base + "DailyTrend"
-        self.json_final = "./Data/dailytrend/" + self.base + "JSONFinal"
+        self.json_final_file = "./Data/dailytrend/" + self.base + "JSONFinal"
+        self.ema_data_file = "./Data/dailytrend/"  +self.base + "EMA"
 
     def get_daily_data(self):
 
@@ -26,9 +27,20 @@ class DailyTrend:
         file.write(json_string)
         file.close()
         self.add_missing_times()
+    def get_daily_data_exchange(self, exchange, market):
+
+        inception = datetime(year=2011, month=1, day=1, hour=0, minute=0, second=0).isoformat() + "Z"
+        endtime = datetime.now().isoformat() + "Z"
+        raw_list = self.nomics.Candles.get_candles(exchange=exchange, interval="1d", market=market, start=inception,
+                                                   end=endtime)
+        json_string = json.dumps(raw_list)
+        file = open(self.raw_json_file, 'w')
+        file.write(json_string)
+        file.close()
+        self.add_missing_times()
 
     def set_np_data(self):
-        with open(self.json_final) as json_file:
+        with open(self.json_final_file) as json_file:
             raw_list = json.load(json_file)
             json_file.close()
         timestampBuilder = []
@@ -67,7 +79,7 @@ class DailyTrend:
         npy_lists = np.load(self.np_file, allow_pickle=True)
         return npy_lists.item()
 
-    def daily_data_json_results(self):
+    def get_ema_results(self):
         ema_list = self.get_np_list()
         return EMA(ema_list, ema_daily)
 
@@ -114,10 +126,28 @@ class DailyTrend:
 
             final_json_list.append(json_cleanup(data[x], False))
 
-        with open(self.json_final, 'w') as json_file:
+        with open(self.json_final_file, 'w') as json_file:
             json_string = json.dumps(final_json_list)
             json_file.write(json_string)
             json_file.close()
+
+    def export_ema_data(self):
+        ema_list = self.get_ema_results()
+        ema_export_list = []
+        TIME_NEXT = timedelta(days=1)
+        with open(self.raw_json_file, 'r') as raw_json:
+            start_date_str = json.load(raw_json)[0]['timestamp']
+            raw_json.close()
+        time = start_date_str
+        for x in ema_list:
+            ema_export_list.append({"timestamp": time,
+                                    "ema": x})
+            grab_time = datetime.strptime(time.strip("Z"), "%Y-%m-%dT%H:%M:%S")
+            time = (grab_time + TIME_NEXT).isoformat() + "Z"
+        with open(self.ema_data_file, "w") as ema_data_file:
+            json_string = json.dumps(ema_export_list)
+            ema_data_file.write(json_string)
+            ema_data_file.close()
 
 
 def json_cleanup(json_obj, missing):
@@ -139,5 +169,3 @@ def json_cleanup(json_obj, missing):
             "close": json_obj["close"],
             "volume": json_obj["volume"]
         }
-
-
