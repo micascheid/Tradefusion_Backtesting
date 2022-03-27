@@ -34,9 +34,10 @@ if __name__ == '__main__':
     # np_list = dt1.get_np_list()
     # print(len(dt1.check_data_set_times()), dt1.check_data_set_times())
 
-    dt1 = DailyTrend("BTC")
-    dt1.get_daily_data()
+    dt1 = DailyTrend("BTC_GDAX")
+    dt1.get_daily_data_exchange("gdax", "BTC-USD")
     dt1.set_np_data()
+    dt1.export_ema_data()
 
     # with open('./Data/json/BTCDailyTrend', 'r') as json_data:
     #     data = json.load(json_data)
