@@ -15,7 +15,7 @@ class DailyTrend:
         self.np_file = "./Data/dailytrend/" + self.base + ".npy"
         self.raw_json_file = "./Data/json/" + self.base + "DailyTrend"
         self.json_final_file = "./Data/dailytrend/" + self.base + "JSONFinal"
-        self.ema_data_file = "./Data/dailytrend/"  +self.base + "EMA"
+        self.ema_data_file = "./Data/dailytrend/" + self.base + "EMA"
 
     def get_daily_data(self):
 
@@ -132,20 +132,18 @@ class DailyTrend:
 
     def export_ema_data(self):
         ema_list = self.get_ema_results()
-        ema_export_list = []
+        ema_export_dict = {}
         TIME_NEXT = timedelta(days=1)
         with open(self.raw_json_file, 'r') as raw_json:
             start_date_str = json.load(raw_json)[0]['timestamp']
             raw_json.close()
         time = start_date_str
         for x in ema_list:
-            ema_export_list.append({"timestamp": time,
-                                    "ema": x})
+            ema_export_dict[time] = x
             grab_time = datetime.strptime(time.strip("Z"), "%Y-%m-%dT%H:%M:%S")
             time = (grab_time + TIME_NEXT).isoformat() + "Z"
-        with open(self.ema_data_file, "w") as ema_data_file:
-            json_string = json.dumps(ema_export_list)
-            ema_data_file.write(json_string)
+        with open(self.ema_data_file, 'w') as ema_data_file:
+            ema_data_file.write(json.dumps(ema_export_dict))
             ema_data_file.close()
 
 

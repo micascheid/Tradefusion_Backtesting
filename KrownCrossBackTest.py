@@ -156,7 +156,7 @@ class KrownCrossBackTest:
         return bbwp
 
     def krown_cross_json_export(self):
-        # Description: After the emaL, emaM, emaH, bbwap, and cross arrays have been created
+        # Description: After the emaL, emaM, emaH, bbwap, daily_trend and cross arrays have been created
             # this function export that information in a list of json objects to a file
             # under Data/krowncross/ for easier analysis on determing entry, exit and W/L
         print("Exporting list of krown cross data to file")
@@ -168,6 +168,10 @@ class KrownCrossBackTest:
         emaH = self.emaHL
         cross_list = self.ema_crosses_2()['cross_list']
 
+        #dailytrend data
+        with open("./Data/dailytrend/BTC_GDAXEMA", "r") as btc_daily_trend:
+            daily_trend = json.load(btc_daily_trend)
+
         # Deterine start point in which data is useful
             # which ever is greatest bbwap(Lookback + MA) or emaH*4
         ema_start = self.emaH*4
@@ -177,6 +181,9 @@ class KrownCrossBackTest:
         #start = datetime(year=2022, month=1, day=1, hour=0, minute=0, second=0).isoformat()+"Z"
 
         for x in range(start_time, len(self.json_data)):
+            time = (self.json_data[x]['timestamp'])
+            date_only = datetime.strptime(time.strip("Z"), "%Y-%m-%dT%H:%M:%S").replace(hour=0, minute=0,
+                                                                                        second=0).isoformat() + "Z"
             kc_dict = {"timestamp": str(self.json_data[x]['timestamp']),
                     "close": str(self.json_data[x]['close']),
                     "cross_status": str(cross_list[x-ema_start][1]),
@@ -184,7 +191,7 @@ class KrownCrossBackTest:
                     "emaL": str(emaL[x]),
                     "emaM": str(emaM[x]),
                     "emaH": str(emaH[x]),
-                    "dailytrend": str()}
+                    "daily_ema": daily_trend[date_only]}
             kc_list.append(kc_dict)
             #start = (start + timedelta(hours=1)).isoformat()+"Z"
         file = open('./Data/kc/kc1', "w")
@@ -230,12 +237,12 @@ class KrownCrossBackTest:
             # convert json_obj variables back
             kc_obj = KCObj(x)
 
-            timestamp, close, cross_status, bbwap, emaL, emaM, emaH = kc_obj.timestamp, kc_obj.close, \
+            timestamp, close, cross_status, bbwap, emaL, emaM, emaH, daily_ema = kc_obj.timestamp, kc_obj.close, \
                                                                       kc_obj.cross_status, kc_obj.bbwap, kc_obj.emaL,\
-                                                                      kc_obj.emaM, kc_obj.emaH
+                                                                      kc_obj.emaM, kc_obj.emaH, kc_obj.daily_ema
             #looking for an entry
             if not in_trade:
-                if "up" in cross_status and not (LIMBO in cross_status):
+                if "up" in cross_status and not (LIMBO in cross_status) and close >= daily_ema:
                     long_bias = True
                 # if "down" in x["cross_status"]:
                 #     long_bias = False
@@ -261,7 +268,7 @@ class KrownCrossBackTest:
             #looking for an exit
             #TODO looking for an exit on long
             if in_trade:
-                if kc_obj.bbwap >= 95:
+                if kc_obj.bbwap >= 100:
                     positions.append((entry.close, kc_obj.close))
                     long_bias = False
                     in_trade = False

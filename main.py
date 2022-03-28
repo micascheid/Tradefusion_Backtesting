@@ -34,10 +34,10 @@ if __name__ == '__main__':
     # np_list = dt1.get_np_list()
     # print(len(dt1.check_data_set_times()), dt1.check_data_set_times())
 
-    dt1 = DailyTrend("BTC_GDAX")
-    dt1.get_daily_data_exchange("gdax", "BTC-USD")
-    dt1.set_np_data()
-    dt1.export_ema_data()
+    # dt1 = DailyTrend("BTC_GDAX")
+    # dt1.get_daily_data_exchange("gdax", "BTC-USD")
+    # dt1.set_np_data()
+    # dt1.export_ema_data()
 
     # with open('./Data/json/BTCDailyTrend', 'r') as json_data:
     #     data = json.load(json_data)
@@ -57,38 +57,38 @@ if __name__ == '__main__':
 
 
     # Bring in crunched data and run against backtest .npy extension
-    # npy_list = np.load(npy_file, allow_pickle=True)
-    # with open(json_file) as json_file:
-    #     json_data = json.load(json_file)
-    #     json_file.close()
-    # kc1 = KrownCrossBackTest(emaL=9, emaM=21, emaH=55, np_data=npy_list.item(), json_data=json_data)
-
+    npy_list = np.load(npy_file, allow_pickle=True)
+    with open(json_file) as json_file:
+        json_data = json.load(json_file)
+        json_file.close()
+    kc1 = KrownCrossBackTest(emaL=9, emaM=21, emaH=55, np_data=npy_list.item(), json_data=json_data)
+    #
     # kc1.krown_cross_json_export()
     #print(kc1)
     #bbwp = kc1.bbwp()
     # print(kc1.ema_crosses()['total_crosses'])
 
-    # kc_ee = kc1.entry_exit()
-    # average_roi_list = []
-    # win_loss = []
-    # win = 0
-    # loss = 0
-    # capital = 1000
-    # for x in kc_ee:
-    #     print(x)
-    #     average_roi_list.append(((x[1]/x[0])-1)*100)
-    # for y in kc_ee:
-    #     if y[0] < y[1]:
-    #         win_loss.append("W")
-    #         win += 1
-    #     else:
-    #         win_loss.append("L")
-    #         loss += 1
-    # print(len(average_roi_list))
-    # print(average_roi_list)
-    # average_roi = sum(average_roi_list)/len(average_roi_list)
-    # print(average_roi)
-    # print(win/(win+loss))
+    kc_ee = kc1.entry_exit()
+    average_roi_list = []
+    win_loss = []
+    win = 0
+    loss = 0
+    capital = 1000
+    for x in kc_ee:
+        print(x)
+        average_roi_list.append(((x[1]/x[0])-1)*100)
+    for y in kc_ee:
+        if y[0] < y[1]:
+            win_loss.append("W")
+            win += 1
+        else:
+            win_loss.append("L")
+            loss += 1
+    print(len(average_roi_list))
+    print(average_roi_list)
+    average_roi = sum(average_roi_list)/len(average_roi_list)
+    print(average_roi)
+    print(win/(win+loss))
     #
     # for z in average_roi_list:
     #     capital = capital * (1+(z/100))
