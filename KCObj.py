@@ -10,3 +10,4 @@ class KCObj:
         self.emaL = float(kc_json_obj['emaL'])
         self.emaM = float(kc_json_obj['emaM'])
         self.emaH = float(kc_json_obj['emaH'])
+        self.daily_ema = float(kc_json_obj['daily_ema'])

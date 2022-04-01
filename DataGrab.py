@@ -114,7 +114,7 @@ class DataGrab:
         file.close()
 
     def get_np_list(self):
-        npy_lists = np.load(self.file, allow_pickle=True)
+        npy_lists = np.load('./Data/npy/' + self.file + '.npy', allow_pickle=True)
         return npy_lists.item()
 
     def check_data_set_times(self, results):
