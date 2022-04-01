@@ -1,0 +1,29 @@
+# Ignore messaround files
+MessAround*.py
+
+# Ignore UsageCheck
+UsageCheck.py
+
+# Ignore API.py as it holds the api key
+API.py
+
+# Ignore pycache
+__pycache__
+
+# Ignore .iml
+*.iml
+
+# Ignore final data directories
+/Data/csv/**
+/Data/npy/**
+/Data/json/**
+/Data/kc/**
+/Data/dailytrend/**
+!/Data/csv/.gitkeep
+!/Data/npy/.gitkeep
+!/Data/json/.gitkeep
+!/Data/kc/.gitkeep
+!/Data/dailytrend/.gitkeep
+
+# Ignore ./idea
+.idea/
