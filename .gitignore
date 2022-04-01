@@ -1,11 +1,11 @@
 # Ignore messaround files
-# MessAround*.py
+MessAround*.py
 
 # Ignore UsageCheck
 UsageCheck.py
 
 #ignore APIKeyFile for future forks
-MessAround.py
+API.py
 
 # Ignore pycache
 __pycache__
