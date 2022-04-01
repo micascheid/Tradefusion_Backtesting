@@ -27,6 +27,7 @@ class DailyTrend:
         file.write(json_string)
         file.close()
         self.add_missing_times()
+
     def get_daily_data_exchange(self, exchange, market):
         inception = datetime(year=2011, month=1, day=1, hour=0, minute=0, second=0).isoformat() + "Z"
         endtime = datetime.now().isoformat() + "Z"

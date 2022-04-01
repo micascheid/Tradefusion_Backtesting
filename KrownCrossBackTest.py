@@ -7,9 +7,8 @@ MA = 13
 LOOKBACK = 252
 EMA = abstract.Function('EMA')
 
-
 class KrownCrossBackTest:
-    def __init__(self, emaL, emaM, emaH, np_data, json_data):
+    def __init__(self, emaL, emaM, emaH, np_data, json_data, kc_file):
         self.np_data = np_data
         self.emaL = emaL
         self.emaM = emaM
@@ -20,6 +19,7 @@ class KrownCrossBackTest:
         self.start = np_data['meta'][0]
         self.tf = np_data['meta'][1]
         self.json_data = json_data
+        self.kc_file = kc_file
 
     def ema_crosses(self):
         # emaH has not been evaulated above 55h time period and may see invalid results above that
@@ -194,12 +194,12 @@ class KrownCrossBackTest:
                     "daily_ema": daily_trend[date_only]}
             kc_list.append(kc_dict)
             #start = (start + timedelta(hours=1)).isoformat()+"Z"
-        file = open('./Data/kc/kc1', "w")
+        file = open('./Data/kc/' + self.kc_file, "w")
         file.write(json.dumps(kc_list))
         file.close()
 
     def kc_load(self):
-        file = open('./Data/kc/kc1', "r")
+        file = open('./Data/kc/' + self.kc_file, "r")
         return json.load(file)
 
     def entry_exit(self):
@@ -252,7 +252,7 @@ class KrownCrossBackTest:
                     ema_low_dif = (emaL/close)-1
                     ema_mid_dif = (emaM/close)-1
                     ema_high_dif = (emaH/close)-1
-                    if ema_mid_dif <= ema_mid_tolerance and not (LIMBO in cross_status) and kc_obj.bbwap <= 10:
+                    if ema_mid_dif <= ema_mid_tolerance and not (LIMBO in cross_status) and bbwap <= 20:
                         entry = kc_obj
                         in_trade = True
                         continue
@@ -268,8 +268,11 @@ class KrownCrossBackTest:
             #looking for an exit
             #TODO looking for an exit on long
             if in_trade:
-                if kc_obj.bbwap >= 100:
-                    positions.append((entry.close, kc_obj.close))
+                if not (LIMBO in cross_status) and (bbwap >= 100 or close <= emaL):
+                    # entry_time = datetime.strptime(entry.timestamp, "%Y-%m-%dT%H:%M:%S")
+                    # exit_time = datetime.strptime(kc_obj.timestamp, "%Y-%m-%dT%H:%M:%S")
+                    duration = (entry.timestamp - kc_obj.timestamp).seconds // 3600
+                    positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
                     long_bias = False
                     in_trade = False
                     continue
