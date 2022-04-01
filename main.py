@@ -10,7 +10,6 @@ from Strategy import Strategy
 import tkinter as tk
 np.set_printoptions(threshold=sys.maxsize)
 
-# nomics api key: m_419a355b4a2283777a4aa1a6590c43ffb409fe5a
 if __name__ == '__main__':
     file_name = 'GDAX_ALL'
     npy_file = './Data/npy/'+file_name+'.npy'
