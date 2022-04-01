@@ -4,7 +4,7 @@ MessAround*.py
 # Ignore UsageCheck
 UsageCheck.py
 
-#ignore APIKeyFile for future forks
+# Ignore API.py as it holds the api key
 API.py
 
 # Ignore pycache
