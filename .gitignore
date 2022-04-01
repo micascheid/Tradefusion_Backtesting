@@ -4,6 +4,9 @@ MessAround*.py
 # Ignore UsageCheck
 UsageCheck.py
 
+#ignore APIKeyFile for future forks
+API.py
+
 # Ignore pycache
 __pycache__
 
@@ -15,10 +18,12 @@ __pycache__
 /Data/npy/**
 /Data/json/**
 /Data/kc/**
+/Data/dailytrend/**
 !/Data/csv/.gitkeep
 !/Data/npy/.gitkeep
 !/Data/json/.gitkeep
 !/Data/kc/.gitkeep
+!/Data/dailytrend/.gitkeep
 
 # Ignore ./idea
 .idea/
