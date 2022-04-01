@@ -17,7 +17,6 @@ class DataGrab:
         self.nomics = API.KEY
 
     def apiCall(self, start, end):
-        # nomics = Nomics('m_419a355b4a2283777a4aa1a6590c43ffb409fe5a')
         return self.nomics.Candles.get_candles(exchange=self.exchange, interval=self.tf, market=self.market,
                                                start=start, end=end)
 
