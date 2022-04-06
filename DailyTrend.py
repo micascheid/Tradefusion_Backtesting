@@ -17,8 +17,7 @@ class DailyTrend:
         self.json_final_file = "./Data/dailytrend/" + self.base + "JSONFinal"
         self.ema_data_file = "./Data/dailytrend/" + self.base + "EMA"
 
-    def get_daily_data(self):
-
+    def set_daily_data(self):
         inception = datetime(year=2011, month=1, day=1, hour=0, minute=0, second=0).isoformat() + "Z"
         endtime = datetime.now().isoformat() + "Z"
         raw_list = self.nomics.Candles.get_candles(interval="1d", start=inception, end=endtime, currency=self.base)
@@ -76,6 +75,7 @@ class DailyTrend:
         np.save(self.np_file, np_list, allow_pickle=True)
 
     def get_np_list(self):
+        self.set_np_data()
         npy_lists = np.load(self.np_file, allow_pickle=True)
         return npy_lists.item()
 
@@ -131,7 +131,7 @@ class DailyTrend:
             json_file.write(json_string)
             json_file.close()
 
-    def export_ema_data(self):
+    def set_ema_data(self):
         ema_list = self.get_ema_results()
         ema_export_dict = {}
         TIME_NEXT = timedelta(days=1)
@@ -147,6 +147,10 @@ class DailyTrend:
             ema_data_file.write(json.dumps(ema_export_dict))
             ema_data_file.close()
 
+    def get_daily_trend(self):
+        with open(self.ema_data_file, "r") as btc_daily_trend:
+            daily_trend = json.load(btc_daily_trend)
+        return daily_trend
 
 def json_cleanup(json_obj, missing):
     if missing:

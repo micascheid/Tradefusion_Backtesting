@@ -17,6 +17,7 @@ class DataGrab:
         self.nomics = API.KEY
 
     def apiCall(self, start, end):
+        print("exchange:", self.exchange, "tf:", self.tf, "market:", self.market)
         return self.nomics.Candles.get_candles(exchange=self.exchange, interval=self.tf, market=self.market,
                                                start=start, end=end)
 
@@ -56,8 +57,6 @@ class DataGrab:
             'volume': volume
         }, raw_list
 
-
-
     #TODO
     def get_data_csv(self):
         # jsonObj = json.dumps(dictTest)
@@ -76,6 +75,8 @@ class DataGrab:
         print("csv data")
 
     def data_conglomeration(self, start, end):
+        start = datetime.strptime(start.strip("Z"), "%Y-%m-%dT%H:%M:%S")
+        end = datetime.strptime(end.strip("Z"), "%Y-%m-%dT%H:%M:%S")
         mainList = []
         DELTA = timedelta(hours=719)
         DELTANEXT = timedelta(hours=1)
@@ -103,7 +104,7 @@ class DataGrab:
 
         return mainList
 
-    def export_data(self):
+    def set_export_data(self):
         np_list, raw_list = self.get_data_np()
         np.save('./Data/npy/'+self.file+".npy", np_list, allow_pickle=True)
 
@@ -112,7 +113,7 @@ class DataGrab:
         file.write(json_string)
         file.close()
 
-    def get_np_list(self):
+    def load_np_list(self):
         npy_lists = np.load('./Data/npy/' + self.file + '.npy', allow_pickle=True)
         return npy_lists.item()
 
@@ -130,3 +131,9 @@ class DataGrab:
                 timeNext = datetime.strptime(time_compare.strip('Z'), "%Y-%m-%dT%H:%M:%S")
                 time_compare = (timeNext + HOUR_ADD).isoformat()+"Z"
         return missing_time
+
+    def load_json_data(self):
+        with open("./Data/json/"+self.file) as json_file:
+            json_data = json.load(json_file)
+            json_file.close()
+        return json_data
