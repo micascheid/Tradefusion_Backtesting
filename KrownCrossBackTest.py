@@ -1,5 +1,6 @@
 from talib import abstract
 from datetime import datetime, timedelta
+from DailyTrend import DailyTrend
 import json
 from KCObj import KCObj
 
@@ -8,7 +9,7 @@ LOOKBACK = 252
 EMA = abstract.Function('EMA')
 
 class KrownCrossBackTest:
-    def __init__(self, emaL, emaM, emaH, np_data, json_data, kc_file):
+    def __init__(self, emaL, emaM, emaH, np_data, json_data, kc_file, ticker):
         self.np_data = np_data
         self.emaL = emaL
         self.emaM = emaM
@@ -16,63 +17,64 @@ class KrownCrossBackTest:
         self.emaLL = EMA(self.np_data, self.emaL)
         self.emaML = EMA(self.np_data, self.emaM)
         self.emaHL = EMA(self.np_data, self.emaH)
-        self.start = np_data['meta'][0]
+        self.start = datetime.strptime(np_data['meta'][0].strip("Z"), "%Y-%m-%dT%H:%M:%S")
         self.tf = np_data['meta'][1]
         self.json_data = json_data
         self.kc_file = kc_file
+        self.ticker = ticker
 
-    def ema_crosses(self):
-        # emaH has not been evaulated above 55h time period and may see invalid results above that
-            # start crossing analysis at emaH*4
-        # full_cross is when all moving averages are in aline above or below one another
-        # watch_cross is when faster ema is crossing middle moving average
-        # paramater to tune the dials
-            # When to enter? at cross? how far form 9 to enter? How far is acceptable to enter off 55?
-            # Take profit
-            # When to exit? at cross back over?
-                # Hard Exit
-
-        #Algo trade:
-            #entry: After complete cross enter within 1% of 21 if oppurtunity occurs and risk to 55 ema is 2% or less
-            #exit: bbwap > 80 first, 9 cross 21 for sure out
-            #stop: close below emaH
-
-        cross_start = self.emaH*4
-
-        cross_occurence = {}
-        cross_occurence_list = []
-        cross_up = False
-        cross_down = False
-        new_cross = False
-        total_crosses = 0
-        bbwp_start_time = self.start + timedelta(hours=LOOKBACK+MA)
-        if len(self.emaLL) == len(self.emaML) == len(self.emaHL):
-            #Establish Baseline, where are the ema's current position at start of analysis?
-            l_start, m_start, h_start = self.emaLL[cross_start], self.emaML[cross_start], self.emaHL[cross_start]
-            if l_start > m_start > h_start:
-                cross_up, cross_down = True, False
-            elif l_start < m_start < h_start:
-                cross_up, cross_down = False, True
-            else:
-                cross_up, cross_down = False, False
-
-            for i in range(cross_start, len(self.emaLL)):
-                el, em, eh = self.emaLL[i], self.emaML[i], self.emaHL[i]
-                if el > em > eh and cross_up == False:
-                    cross_up, cross_down, new_cross = True, False, True
-                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = "cross_up"
-                if el < em < eh and cross_down == False:
-                    cross_up, cross_down, new_cross = False, True, True
-                    cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = "cross_down"
-                if new_cross:
-                    total_crosses += 1
-                new_cross = False
-        else:
-            return -1
-        return {"start": self.start,
-                "timeframe": self.tf,
-                "total_crosses": total_crosses,
-                "cross_occurrences": cross_occurence}
+    # def ema_crosses(self):
+    #     # emaH has not been evaulated above 55h time period and may see invalid results above that
+    #         # start crossing analysis at emaH*4
+    #     # full_cross is when all moving averages are in aline above or below one another
+    #     # watch_cross is when faster ema is crossing middle moving average
+    #     # paramater to tune the dials
+    #         # When to enter? at cross? how far form 9 to enter? How far is acceptable to enter off 55?
+    #         # Take profit
+    #         # When to exit? at cross back over?
+    #             # Hard Exit
+    #
+    #     #Algo trade:
+    #         #entry: After complete cross enter within 1% of 21 if oppurtunity occurs and risk to 55 ema is 2% or less
+    #         #exit: bbwap > 80 first, 9 cross 21 for sure out
+    #         #stop: close below emaH
+    #
+    #     cross_start = self.emaH*4
+    #
+    #     cross_occurence = {}
+    #     cross_occurence_list = []
+    #     cross_up = False
+    #     cross_down = False
+    #     new_cross = False
+    #     total_crosses = 0
+    #     bbwp_start_time = self.start + timedelta(hours=LOOKBACK+MA)
+    #     if len(self.emaLL) == len(self.emaML) == len(self.emaHL):
+    #         #Establish Baseline, where are the ema's current position at start of analysis?
+    #         l_start, m_start, h_start = self.emaLL[cross_start], self.emaML[cross_start], self.emaHL[cross_start]
+    #         if l_start > m_start > h_start:
+    #             cross_up, cross_down = True, False
+    #         elif l_start < m_start < h_start:
+    #             cross_up, cross_down = False, True
+    #         else:
+    #             cross_up, cross_down = False, False
+    #
+    #         for i in range(cross_start, len(self.emaLL)):
+    #             el, em, eh = self.emaLL[i], self.emaML[i], self.emaHL[i]
+    #             if el > em > eh and cross_up == False:
+    #                 cross_up, cross_down, new_cross = True, False, True
+    #                 cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = "cross_up"
+    #             if el < em < eh and cross_down == False:
+    #                 cross_up, cross_down, new_cross = False, True, True
+    #                 cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = "cross_down"
+    #             if new_cross:
+    #                 total_crosses += 1
+    #             new_cross = False
+    #     else:
+    #         return -1
+    #     return {"start": self.start,
+    #             "timeframe": self.tf,
+    #             "total_crosses": total_crosses,
+    #             "cross_occurrences": cross_occurence}
 
     def ema_crosses_2(self):
         #bbwap start:
@@ -155,22 +157,28 @@ class KrownCrossBackTest:
             bbwp.append("{:.3f}".format((count/LOOKBACK)*100))
         return bbwp
 
-    def krown_cross_json_export(self):
+    def get_daily_trend(self):
+        dt = DailyTrend(self.ticker)
+        dt.set_np_data()
+        dt.set_ema_data()
+
+    def set_krown_cross_json_export(self):
         # Description: After the emaL, emaM, emaH, bbwap, daily_trend and cross arrays have been created
             # this function export that information in a list of json objects to a file
             # under Data/krowncross/ for easier analysis on determing entry, exit and W/L
         print("Exporting list of krown cross data to file")
+        dt = DailyTrend(self.ticker)
+        dt.set_daily_data()
+        dt.set_np_data()
+        dt.set_ema_data()
+        daily_trend = dt.get_daily_trend()
         json_data = self.json_data
-        occurences = self.ema_crosses()['cross_occurrences']
+        # occurences = self.ema_crosses()['cross_occurrences']
         bbwap = self.bbwp()
         emaL = self.emaLL
         emaM = self.emaML
         emaH = self.emaHL
         cross_list = self.ema_crosses_2()['cross_list']
-
-        #dailytrend data
-        with open("./Data/dailytrend/BTC_GDAXEMA", "r") as btc_daily_trend:
-            daily_trend = json.load(btc_daily_trend)
 
         # Deterine start point in which data is useful
             # which ever is greatest bbwap(Lookback + MA) or emaH*4
@@ -221,6 +229,7 @@ class KrownCrossBackTest:
             # hourly trend is against daily trend or suggests caution
             #
         # Other thoughts: Checking which regime BTC is in regarding bull market support band
+        self.set_krown_cross_json_export()
         kc_data = self.kc_load()
         positions = []
         global entry
@@ -285,13 +294,45 @@ class KrownCrossBackTest:
 
         return positions
 
-    def roi(self):
+    def get_roi(self):
         positions = self.entry_exit()
+        average_roi_list = []
+        win_loss = []
+        win = 0
+        loss = 0
+        capital = 1000
+        for x in positions:
+            average_roi_list.append(round((((x[1][1]/x[0][1])-1)*100), 3))
+        for y in positions:
+            if y[0][1] < y[1][1]:
+                win_loss.append("W")
+                win += 1
+            else:
+                win_loss.append("L")
+                loss += 1
+        # print(len(average_roi_list))
+        # print(average_roi_list)
+        b_w = max(average_roi_list)
+        b_l = min(average_roi_list)
+        # print("Biggest Winner =", b_w, "| Biggest Loser =", b_l)
+        average_trade = sum(average_roi_list)/len(average_roi_list)
+        # print("Trade Average: {}%".format("{:.2f}".format(average_trade)))
+        # print("Percentage Win: {}%".format(("{:.2f}".format(win/(win+loss)*100))))
+        w_l = (win/(win+loss) * 100)
 
-    def __str__(self):
-        kc = self.ema_crosses()
-        return "Start: %s\nTimeframe: %s\nTotal Crosses: %s\nTotal Occurrences: %s" % \
-               (kc['start'],
-                kc['timeframe'],
-                kc['total_crosses'],
-                kc['cross_occurrences'])
+        for z in average_roi_list:
+            #print("trade:", capital)
+            capital = capital * (1+(z/100))
+        return {
+                "w_l": w_l,
+                "average_trade": average_trade,
+                "capitol_ending": capital
+                }
+
+    # def __str__(self):
+    #     kc = self.ema_crosses()
+    #     return "Start: %s\nTimeframe: %s\nTotal Crosses: %s\nTotal Occurrences: %s" % \
+    #            (kc['start'],
+    #             kc['timeframe'],
+    #             kc['total_crosses'],
+    #             kc['cross_occurrences'])
