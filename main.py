@@ -4,12 +4,20 @@ from KrownCrossBackTest import KrownCrossBackTest
 from datetime import datetime, timedelta
 import numpy as np
 import sys
+import fnmatch
+import os
 from DailyTrend import DailyTrend
 from DataGrab import DataGrab
 from Strategy import Strategy
 import tkinter as tk
 np.set_printoptions(threshold=sys.maxsize)
 
+def find(filename, directory):
+    for root, dirs, files in os.walk(directory):
+        if filename in files:
+            return True
+        else:
+            return False
 
 if __name__ == '__main__':
     # file_name = 'GDAX_ALL'
@@ -17,7 +25,8 @@ if __name__ == '__main__':
     # json_file = './Data/json/' + file_name
     #Select which strat to use:
 
-    strat_option = int(input("Please enter number number based on provided options: 1-KrownCross, 2-More to come!"))
+    # strat_option = int(input("Please enter number number based on provided options: 1-KrownCross, 2-More to come!"))
+    strat_option = 1
     if strat_option == 1:
         start = datetime(year=2022, month=2, day=1, hour=0, minute=0, second=0).isoformat() + "Z"
         end = datetime(year=2022, month=3, day=31, hour=0, minute=0, second=0).isoformat() + "Z"
@@ -38,9 +47,14 @@ if __name__ == '__main__':
         filename = ticker.upper() + time_frame
         market = ticker.upper() + "-USD"
         dg = DataGrab(exchange=exchange, tf=time_frame, market=market, start=start, end=end, file=filename)
-        dg.set_export_data()
+        if not find(filename, "./Data/json/"):
+            dg.set_export_data()
         kc = KrownCrossBackTest(ema_l, ema_m, ema_h, dg.load_np_list(), dg.load_json_data(), filename, ticker)
-        print(kc.get_roi())
+        kc.rsi()
+
+        kc.entry_exit_basic()
+
+
 
     else:
         print("more to come!")

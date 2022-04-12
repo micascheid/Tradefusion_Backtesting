@@ -14,6 +14,13 @@ def precision(num, prec):
     return "{:.{}f}".format(num, prec)
 
 
+def ema_dif(close, ema, trade_type):
+    if trade_type == "long":
+        return ((close/ema)-1)*100
+    if trade_type == "short":
+        return (1-(ema/close))*100
+
+
 class KrownCrossBackTest:
     def __init__(self, emaL, emaM, emaH, np_data, json_data, kc_file, ticker):
         self.np_data = np_data
@@ -166,7 +173,6 @@ class KrownCrossBackTest:
 
     def rsi(self):
         RSI = abstract.Function('RSI')
-        print(self.np_data['meta'])
         rsi = RSI(self.np_data)[MA+LOOKBACK:]
         return rsi
 
@@ -303,8 +309,142 @@ class KrownCrossBackTest:
 
         return positions_dict
 
-    # def entry_exit_basic(self):
-    #     #
+    def entry_exit_basic(self):
+        kc_data = self.kc_load()
+        trade_long = False
+        trade_short = False
+        kc_obj_low = {"timestamp": "NULL",
+                      "close": "100000",
+                      "cross_status": "NULL",
+                      "bbwp": "NULL",
+                      "rsi": "NULL",
+                      "emaL": "NULL",
+                      "emaM": "NULL",
+                      "emaH": "NULL",
+                      "daily_ema": "NULL"}
+        kc_obj_high = {"timestamp": "NULL",
+                      "close": "0",
+                      "cross_status": "NULL",
+                      "bbwp": "NULL",
+                      "rsi": "NULL",
+                      "emaL": "NULL",
+                      "emaM": "NULL",
+                      "emaH": "NULL",
+                      "daily_ema": "NULL"}
+        ee = []
+        best_ee_long = []
+        best_ee_short = []
+        current_high = kc_obj_high
+        current_low = kc_obj_low
+        UP = "cross_up"
+        DOWN = "cross_down"
+        entry_i = 0
+        found_i = 0
+
+        for idx, x in enumerate(kc_data):
+            if not trade_long and not trade_short:
+                if x['cross_status'] == UP:
+                    entry_i = idx
+                    found_i = idx
+                    trade_long = True
+                    kc_obj = x
+                    current_high = x
+                if x['cross_status'] == DOWN:
+                    entry_i = idx
+                    found_i = idx
+                    trade_short = True
+                    kc_obj = x
+                    current_low = x
+
+            # First find the best exit candle
+            if trade_long and float(x['close']) > float(current_high['close']):
+                current_high = x
+                found_i = idx
+            if trade_short and float(x['close']) < float(current_low['close']):
+                current_low = x
+                found_i = idx
+
+            if x['cross_status'] == DOWN and trade_long:
+                ee.append((kc_obj, x, "long"))
+                #once next cross is confirmed look for previous best entry before high and after entry
+                current_low = kc_obj_low
+                for i in range(entry_i, found_i):
+                    if float(kc_data[i]['close']) < float(current_low['close']):
+                        current_low = kc_data[i]
+                best_ee_long.append((current_low, current_high))
+                current_high = x
+                trade_long = False
+                trade_short = True
+                kc_obj = x
+                entry_i = idx
+            if x['cross_status'] == UP and trade_short:
+                ee.append((kc_obj, x, "short"))
+                current_high = kc_obj_high
+                for i in range(entry_i, found_i):
+                    if float(kc_data[i]['close']) > float(current_high['close']):
+                        current_high = kc_data[i]
+                best_ee_short.append((current_low, current_high))
+                current_low, current_high = x, x
+                trade_long = True
+                trade_short = False
+                kc_obj = x
+                entry_i = idx
+        [print(long) for long in best_ee_long]
+        return ee, best_ee_long, best_ee_short
+
+    def entry_exit_analysis(self):
+        # What do I wanna know
+            # How far from 9,21,55 ema was the e/e from?
+            # Current bbwp
+            # State of RSI
+            # Current daily trend
+        basic_ee, longs, shorts = self.entry_exit_basic()
+
+        longs_analysis = []
+        short_analysis = []
+
+        for long in longs:
+            entry = KCObj(long[1])
+            exit = KCObj(long[0])
+            timestamp, close, cross_status, bbwp, emaL, emaM, emaH, daily_ema, rsi = entry.timestamp, entry.close, \
+                                                                      entry.cross_status, entry.bbwp, entry.emaL,\
+                                                                      entry.emaM, entry.emaH, entry.daily_ema, entry.rsi
+
+            ema_l_dif = ema_dif(close, emaL, "long")
+            ema_m_dif = ema_dif(close, emaM, "long")
+            ema_h_dif = ema_dif(close, emaH, "long")
+            roi = ema_dif(close, exit.close, "long")
+
+            longs_analysis.append(
+                {"ema_l_dif": ema_l_dif,
+                 "ema_m_dif": ema_m_dif,
+                 "ema_h_dif": ema_h_dif,
+                 "rsi": rsi,
+                 "bbwp": bbwp,
+                 "roi": roi}
+            )
+        for short in shorts:
+            entry = KCObj(short[1])
+            exit = KCObj(short[0])
+            timestamp, close, cross_status, bbwp, emaL, emaM, emaH, daily_ema, rsi = entry.timestamp, entry.close, \
+                                                                      entry.cross_status, entry.bbwp, entry.emaL,\
+                                                                      entry.emaM, entry.emaH, entry.daily_ema, entry.rsi
+
+            ema_l_dif = ema_dif(close, emaL, "short")
+            ema_m_dif = ema_dif(close, emaM, "short")
+            ema_h_dif = ema_dif(close, emaH, "short")
+            roi = ema_dif(close, exit.close, "short")
+
+            short_analysis.append(
+                {"ema_l_dif": ema_l_dif,
+                 "ema_m_dif": ema_m_dif,
+                 "ema_h_dif": ema_h_dif,
+                 "rsi": rsi,
+                 "bbwp": bbwp,
+                 "roi": roi}
+            )
+
+
 
     def get_roi(self):
         positions = self.entry_exit()
@@ -356,3 +496,4 @@ class KrownCrossBackTest:
     #             kc['timeframe'],
     #             kc['total_crosses'],
     #             kc['cross_occurrences'])
+
