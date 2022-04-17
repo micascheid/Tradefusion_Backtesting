@@ -1,0 +1,16 @@
+Krown Cross:
+    Time Frame: 1h, 4h, 6h
+    Risk Management: GTFO
+        stop 1: close above or below 55e | Included
+        Expedited: above or below previous swing high/low - Note: bring in later as pivots are not calculated rn
+    Entry:
+        a.)
+        b.) Can start an entry with a close around 21 if more aggressive 55 if more conservative  | Included
+        c.) confirmation of rsi divergence | NA - more infastructure needed
+        d.) low or downtrending bbwp | Included
+    Exit: Which ever of the following comes first
+        a.) RSI divergence : Negative
+        b.) BBWP > 80 or 90 : Positive
+        c.) 9e crossing 21e
+    Invalidation:
+        hourly trend is against daily trend or suggests caution
