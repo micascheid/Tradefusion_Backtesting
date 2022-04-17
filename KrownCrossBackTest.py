@@ -1,8 +1,10 @@
+import matplotlib.pyplot
 from talib import abstract
 from datetime import datetime, timedelta
 from DailyTrend import DailyTrend
 import json
 from KCObj import KCObj
+from matplotlib import pyplot as plt
 
 MA = 13
 LOOKBACK = 252
@@ -227,7 +229,6 @@ class KrownCrossBackTest:
         file.write(json.dumps(kc_list))
         file.close()
 
-
     def kc_load(self):
         file = open('./Data/kc/' + self.kc_file, "r")
         return json.load(file)
@@ -313,24 +314,24 @@ class KrownCrossBackTest:
         kc_data = self.kc_load()
         trade_long = False
         trade_short = False
-        kc_obj_low = {"timestamp": "NULL",
+        kc_obj_low = {"timestamp": "2011-01-01T00:00:00Z",
                       "close": "100000",
                       "cross_status": "NULL",
-                      "bbwp": "NULL",
-                      "rsi": "NULL",
-                      "emaL": "NULL",
-                      "emaM": "NULL",
-                      "emaH": "NULL",
-                      "daily_ema": "NULL"}
-        kc_obj_high = {"timestamp": "NULL",
-                      "close": "0",
+                      "bbwp": "0",
+                      "rsi": "0",
+                      "emaL": "1",
+                      "emaM": "1",
+                      "emaH": "1",
+                      "daily_ema": "1"}
+        kc_obj_high = {"timestamp": "2011-01-01T00:00:00Z",
+                      "close": "1",
                       "cross_status": "NULL",
-                      "bbwp": "NULL",
-                      "rsi": "NULL",
-                      "emaL": "NULL",
-                      "emaM": "NULL",
-                      "emaH": "NULL",
-                      "daily_ema": "NULL"}
+                      "bbwp": "0",
+                      "rsi": "0",
+                      "emaL": "1",
+                      "emaM": "1",
+                      "emaH": "1",
+                      "daily_ema": "1"}
         ee = []
         best_ee_long = []
         best_ee_short = []
@@ -339,19 +340,19 @@ class KrownCrossBackTest:
         UP = "cross_up"
         DOWN = "cross_down"
         entry_i = 0
-        found_i = 0
+        exit_i = 0
 
         for idx, x in enumerate(kc_data):
             if not trade_long and not trade_short:
                 if x['cross_status'] == UP:
                     entry_i = idx
-                    found_i = idx
+                    exit_i = idx
                     trade_long = True
                     kc_obj = x
                     current_high = x
                 if x['cross_status'] == DOWN:
                     entry_i = idx
-                    found_i = idx
+                    exit_i = idx
                     trade_short = True
                     kc_obj = x
                     current_low = x
@@ -359,19 +360,23 @@ class KrownCrossBackTest:
             # First find the best exit candle
             if trade_long and float(x['close']) > float(current_high['close']):
                 current_high = x
-                found_i = idx
+                exit_i = idx
             if trade_short and float(x['close']) < float(current_low['close']):
                 current_low = x
-                found_i = idx
+                exit_i = idx
 
             if x['cross_status'] == DOWN and trade_long:
                 ee.append((kc_obj, x, "long"))
                 #once next cross is confirmed look for previous best entry before high and after entry
                 current_low = kc_obj_low
-                for i in range(entry_i, found_i):
+                roi = 0
+                for i in range(entry_i, exit_i):
                     if float(kc_data[i]['close']) < float(current_low['close']):
                         current_low = kc_data[i]
-                best_ee_long.append((current_low, current_high))
+                if entry_i >= exit_i:
+                    current_low = current_high
+                #roi = ((float(current_low[1]['close']) / float(current_high[0]['close'])) - 1) * 100
+                best_ee_long.append((current_low, current_high, "long", roi))
                 current_high = x
                 trade_long = False
                 trade_short = True
@@ -380,19 +385,19 @@ class KrownCrossBackTest:
             if x['cross_status'] == UP and trade_short:
                 ee.append((kc_obj, x, "short"))
                 current_high = kc_obj_high
-                for i in range(entry_i, found_i):
+                for i in range(entry_i, exit_i):
                     if float(kc_data[i]['close']) > float(current_high['close']):
-                        current_high = kc_data[i]
-                best_ee_short.append((current_low, current_high))
+                            current_high = kc_data[i]
+                best_ee_short.append((current_low, current_high, "short"))
                 current_low, current_high = x, x
                 trade_long = True
                 trade_short = False
                 kc_obj = x
                 entry_i = idx
-        [print(long) for long in best_ee_long]
+        print("\n".join([str(long) for long in best_ee_long if long[2] == "long"]))
         return ee, best_ee_long, best_ee_short
 
-    def entry_exit_analysis(self):
+    def entry_exit_analysis(self, roi):
         # What do I wanna know
             # How far from 9,21,55 ema was the e/e from?
             # Current bbwp
@@ -402,10 +407,17 @@ class KrownCrossBackTest:
 
         longs_analysis = []
         short_analysis = []
+        long_bbwp = []
+        long_rsi = []
+        long_ema_l_spread = []
+        long_ema_m_spread = []
+        long_ema_h_spread = []
+        long_daily_ema = []
+        long_roi = []
 
         for long in longs:
-            entry = KCObj(long[1])
-            exit = KCObj(long[0])
+            entry = KCObj(long[0])
+            exit = KCObj(long[1])
             timestamp, close, cross_status, bbwp, emaL, emaM, emaH, daily_ema, rsi = entry.timestamp, entry.close, \
                                                                       entry.cross_status, entry.bbwp, entry.emaL,\
                                                                       entry.emaM, entry.emaH, entry.daily_ema, entry.rsi
@@ -413,8 +425,7 @@ class KrownCrossBackTest:
             ema_l_dif = ema_dif(close, emaL, "long")
             ema_m_dif = ema_dif(close, emaM, "long")
             ema_h_dif = ema_dif(close, emaH, "long")
-            roi = ema_dif(close, exit.close, "long")
-
+            roi = ema_dif(exit.close, close, "long")
             longs_analysis.append(
                 {"ema_l_dif": ema_l_dif,
                  "ema_m_dif": ema_m_dif,
@@ -423,6 +434,13 @@ class KrownCrossBackTest:
                  "bbwp": bbwp,
                  "roi": roi}
             )
+            long_rsi.append(rsi)
+            long_ema_l_spread.append(ema_l_dif)
+            long_ema_m_spread.append(ema_m_dif)
+            long_ema_h_spread.append(ema_h_dif)
+            long_daily_ema.append(daily_ema)
+            long_bbwp.append(bbwp)
+            long_roi.append(roi)
         for short in shorts:
             entry = KCObj(short[1])
             exit = KCObj(short[0])
@@ -443,19 +461,48 @@ class KrownCrossBackTest:
                  "bbwp": bbwp,
                  "roi": roi}
             )
+        print(long_roi)
+        #plot longs bbwap entry
+        metrics = [("rsi", long_rsi), ("ema_l_spread",long_ema_l_spread), ("ema_m_spread", long_ema_m_spread),
+                   ("ema_h_spread",long_ema_h_spread), ("daily_ema",long_daily_ema), ("bbwp", long_bbwp), ("roi", long_roi)]
+        print(long_rsi)
+        for metric in metrics:
+            blue = []
+            blue_idx = []
+            red = []
+            red_idx = []
+            for idx in range(len(metric[1])):
+                if long_roi[idx] < 8:
+                    blue.append(metric[1][idx])
+                    blue_idx.append(idx)
+                else:
+                    red.append(metric[1][idx])
+                    red_idx.append(idx)
+            plt.scatter(x=blue_idx, y=blue, c="#00BFFF")
+            plt.scatter(x=red_idx, y=red, c="#FF0000")
+            plt.ylabel(metric[0])
+            plt.figure()
+
+        plt.show()
 
 
 
     def get_roi(self):
-        positions = self.entry_exit()
+        basic_ee, longs, shorts = self.entry_exit_basic()
+
         position_entry_exit = []
         # for entries in positions:
         #     position_entry_exit.append((entries[0][0].isoformat(), entries[1][0].isoformat()))
         # print(position_entry_exit)
         average_roi_list = []
-        print(positions)
-        sorted_positions = sorted(positions.items(), key=lambda kv: kv[1]['pnl'], reverse=True)
-        print(dict(sorted_positions))
+        #print(longs)
+        # sorted_positions = sorted(longs.items(), key=lambda kv: kv[1]['pnl'], reverse=True)
+
+        for long in longs:
+            average_roi_list.append(((float(long[1]['close'])/float(long[0]['close']))-1)*100)
+        print(average_roi_list)
+
+
         win_loss = []
         win = 0
         loss = 0
@@ -479,9 +526,10 @@ class KrownCrossBackTest:
         # print("Percentage Win: {}%".format(("{:.2f}".format(win/(win+loss)*100))))
         # w_l = (win/(win+loss) * 100)
 
-        # for z in average_roi_list:
-        #     #print("trade:", capital)
-        #     capital = capital * (1+(z/100))
+        for z in average_roi_list:
+            #print("trade:", capital)
+            capital = capital * (1+(z/100))
+        print(capital)
         # return {
         #         "w_l": w_l,
         #         "average_trade": average_trade,
@@ -496,4 +544,87 @@ class KrownCrossBackTest:
     #             kc['timeframe'],
     #             kc['total_crosses'],
     #             kc['cross_occurrences'])
+
+    # def entry_exit_basic_backup(self):
+    #     kc_data = self.kc_load()
+    #     trade_long = False
+    #     trade_short = False
+    #     kc_obj_low = {"timestamp": "2011-01-01T00:00:00Z",
+    #                   "close": "100000",
+    #                   "cross_status": "NULL",
+    #                   "bbwp": "0",
+    #                   "rsi": "0",
+    #                   "emaL": "1",
+    #                   "emaM": "1",
+    #                   "emaH": "1",
+    #                   "daily_ema": "1"}
+    #     kc_obj_high = {"timestamp": "2011-01-01T00:00:00Z",
+    #                    "close": "1",
+    #                    "cross_status": "NULL",
+    #                    "bbwp": "0",
+    #                    "rsi": "0",
+    #                    "emaL": "1",
+    #                    "emaM": "1",
+    #                    "emaH": "1",
+    #                    "daily_ema": "1"}
+    #     ee = []
+    #     best_ee_long = []
+    #     best_ee_short = []
+    #     current_high = kc_obj_high
+    #     current_low = kc_obj_low
+    #     UP = "cross_up"
+    #     DOWN = "cross_down"
+    #     entry_i = 0
+    #     found_i = 0
+    #
+    #     for idx, x in enumerate(kc_data):
+    #         if not trade_long and not trade_short:
+    #             if x['cross_status'] == UP:
+    #                 entry_i = idx
+    #                 found_i = idx
+    #                 trade_long = True
+    #                 kc_obj = x
+    #                 current_high = x
+    #             if x['cross_status'] == DOWN:
+    #                 entry_i = idx
+    #                 found_i = idx
+    #                 trade_short = True
+    #                 kc_obj = x
+    #                 current_low = x
+    #
+    #         # First find the best exit candle
+    #         if trade_long and float(x['close']) > float(current_high['close']):
+    #             current_high = x
+    #             found_i = idx
+    #         if trade_short and float(x['close']) < float(current_low['close']):
+    #             current_low = x
+    #             found_i = idx
+    #
+    #         if x['cross_status'] == DOWN and trade_long:
+    #             ee.append((kc_obj, x, "long"))
+    #             # once next cross is confirmed look for previous best entry before high and after entry
+    #             current_low = kc_obj_low
+    #             for i in range(entry_i, found_i):
+    #                 if float(kc_data[i]['close']) < float(current_low['close']):
+    #                     current_low = kc_data[i]
+    #             best_ee_long.append((current_low, current_high))
+    #             current_high = x
+    #             trade_long = False
+    #             trade_short = True
+    #             kc_obj = x
+    #             entry_i = idx
+    #         if x['cross_status'] == UP and trade_short:
+    #             ee.append((kc_obj, x, "short"))
+    #             current_high = kc_obj_high
+    #             for i in range(entry_i, found_i):
+    #                 if float(kc_data[i]['close']) > float(current_high['close']):
+    #                     current_high = kc_data[i]
+    #             best_ee_short.append((current_low, current_high))
+    #             current_low, current_high = x, x
+    #             trade_long = True
+    #             trade_short = False
+    #             kc_obj = x
+    #             entry_i = idx
+    #     [print(long) for long in best_ee_long]
+    #     return ee, best_ee_long, best_ee_short
 

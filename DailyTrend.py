@@ -135,11 +135,18 @@ class DailyTrend:
         ema_list = self.get_ema_results()
         ema_export_dict = {}
         TIME_NEXT = timedelta(days=1)
+        ema_slopes = []
         with open(self.raw_json_file, 'r') as raw_json:
             start_date_str = json.load(raw_json)[0]['timestamp']
             raw_json.close()
         time = start_date_str
-        for x in ema_list:
+        for idx in range(len(ema_list)):
+            if idx != 0:
+                if ema_list[idx-1] != "NaN":
+                    ema_slopes.append(round(((1-(ema_list[idx]/ema_list[idx-1]))*100), 3))
+            else:
+                ema_slopes.append(1)
+        for x in ema_slopes:
             ema_export_dict[time] = x
             grab_time = datetime.strptime(time.strip("Z"), "%Y-%m-%dT%H:%M:%S")
             time = (grab_time + TIME_NEXT).isoformat() + "Z"
