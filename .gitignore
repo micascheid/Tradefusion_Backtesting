@@ -18,12 +18,17 @@ __pycache__
 /Data/npy/**
 /Data/json/**
 /Data/kc/**
+/Data/ema/**
 /Data/dailytrend/**
+/Regression/csv/**
 !/Data/csv/.gitkeep
 !/Data/npy/.gitkeep
 !/Data/json/.gitkeep
 !/Data/kc/.gitkeep
 !/Data/dailytrend/.gitkeep
-
+!/Regression/csv/.gitkeep
 # Ignore ./idea
 .idea/
+
+#Random Notes
+RandomNotes
