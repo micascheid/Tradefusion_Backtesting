@@ -1,16 +1,25 @@
+import itertools
+
 import matplotlib.pyplot
+import pandas as pd
 from talib import abstract
 from datetime import datetime, timedelta
 from DailyTrend import DailyTrend
 import json
 from KCObj import KCObj
 from matplotlib import pyplot as plt
+import numpy as np
+import scipy.stats
+from DataGrab import load_json_data_static
+import statsmodels.api as sm
+from sklearn import linear_model
+from CSVCreator import CSVCreator
 
-MA = 13
+MA = 21
 LOOKBACK = 252
 EMA = abstract.Function('EMA')
 PRECISION = 4
-
+LENGTH = 481
 
 def precision(num, prec):
     return "{:.{}f}".format(num, prec)
@@ -22,7 +31,8 @@ def ema_dif(close, ema, trade_type):
     if trade_type == "short":
         return (1-(ema/close))*100
 
-
+def iso_datetime_convert(iso):
+    return datetime.strptime(iso.strip("Z"), "%Y-%m-%dT%H:%M:%S")
 class KrownCrossBackTest:
     def __init__(self, emaL, emaM, emaH, np_data, json_data, kc_file, ticker):
         self.np_data = np_data
@@ -170,7 +180,6 @@ class KrownCrossBackTest:
                 if bbw[k] < current_bbw:
                     count += 1
             bbwp.append((count/LOOKBACK)*100)
-        print("len bbwp:", len(bbwp))
         return bbwp
 
     def rsi(self):
@@ -189,9 +198,9 @@ class KrownCrossBackTest:
             # under Data/krowncross/ for easier analysis on determing entry, exit and W/L
         print("Exporting list of krown cross data to file")
         dt = DailyTrend(self.ticker)
-        dt.set_daily_data()
-        dt.set_np_data()
-        dt.set_ema_data()
+        # dt.set_daily_data()
+        # dt.set_np_data()
+        # dt.set_ema_data()
         daily_trend = dt.get_daily_trend()
         json_data = self.json_data
         # occurences = self.ema_crosses()['cross_occurrences']
@@ -208,11 +217,46 @@ class KrownCrossBackTest:
         rsi = self.rsi()
         kc_list = []
         #start = datetime(year=2022, month=1, day=1, hour=0, minute=0, second=0).isoformat()+"Z"
+        BTC_WEEKLY_EMA = load_json_data_static("BTCWeeklyEMA")
+        BTC_WEEKLY_EMA_1 = list(BTC_WEEKLY_EMA.keys())[0]
+        BTC_WEEKLY_1 = datetime.strptime(BTC_WEEKLY_EMA_1.strip("Z"), "%Y-%m-%dT%H:%M:%S").replace(
+            hour=0, minute=0, second=0).isoformat() + "Z"
+        weekly = datetime.strptime(BTC_WEEKLY_1.strip("Z"), "%Y-%m-%dT%H:%M:%S")
+        short_tf = datetime.strptime(self.json_data[0]['timestamp'].strip("Z"), "%Y-%m-%dT%H:%M:%S")
+
+        #first need to determine which key in the weekly ema dictionary I need to start at
+        BTC_WEEKLY_KEYS = list(BTC_WEEKLY_EMA.keys())
+        time1 = self.json_data[0]['timestamp']
+        dif = 100000000000000
+        time_keep_start = BTC_WEEKLY_KEYS[0]
+        print((short_tf-weekly).total_seconds())
+        for idx, x in enumerate(BTC_WEEKLY_KEYS):
+            if (iso_datetime_convert(time1) - iso_datetime_convert(x)).total_seconds() < 0:
+                break
+            if (iso_datetime_convert(time1) - iso_datetime_convert(x)).total_seconds() == 0:
+                time_keep_start = BTC_WEEKLY_KEYS[idx-1]
+                break
+            if (iso_datetime_convert(time1) - iso_datetime_convert(x)).total_seconds() < dif:
+                time_keep_start = BTC_WEEKLY_KEYS[idx-1]
+                dif = (iso_datetime_convert(time1) - iso_datetime_convert(x)).total_seconds()
+
+        BTC_WEEKLY_NEW = iter(dict(itertools.islice(BTC_WEEKLY_EMA.items(), list(BTC_WEEKLY_EMA).index(
+            time_keep_start), len(BTC_WEEKLY_EMA))))
+        time_keep_start = next(BTC_WEEKLY_NEW)
 
         for x in range(start_time, len(self.json_data)):
             time = (self.json_data[x]['timestamp'])
             date_only = datetime.strptime(time.strip("Z"), "%Y-%m-%dT%H:%M:%S").replace(hour=0, minute=0,
                                                                                         second=0).isoformat() + "Z"
+            bmsb = False
+            if (iso_datetime_convert(self.json_data[x]['timestamp']) - iso_datetime_convert(
+                    time_keep_start)).total_seconds() >= 604800:
+                time_keep_start = next(BTC_WEEKLY_NEW, None)
+            if (iso_datetime_convert(self.json_data[x]['timestamp']) - iso_datetime_convert(
+                    time_keep_start)).total_seconds() >= 0:
+                if float(self.json_data[x]['close']) >= BTC_WEEKLY_EMA[time_keep_start]:
+                    bmsb = True
+
             kc_dict = {
                 "timestamp": str(self.json_data[x]['timestamp']),
                 "close": str(precision(float(self.json_data[x]['close']), 4)),
@@ -222,7 +266,8 @@ class KrownCrossBackTest:
                 "emaL": str(emaL[x]),
                 "emaM": str(emaM[x]),
                 "emaH": str(emaH[x]),
-                "daily_ema": daily_trend[date_only]}
+                "daily_ema": daily_trend[date_only],
+                "bmsb": bmsb}
             kc_list.append(kc_dict)
             #start = (start + timedelta(hours=1)).isoformat()+"Z"
         file = open('./Data/kc/' + self.kc_file, "w")
@@ -394,97 +439,161 @@ class KrownCrossBackTest:
                 trade_short = False
                 kc_obj = x
                 entry_i = idx
-        print("\n".join([str(long) for long in best_ee_long if long[2] == "long"]))
+        #print("\n".join([str(long) for long in best_ee_long if long[2] == "long"]))
         return ee, best_ee_long, best_ee_short
 
-    def entry_exit_analysis(self, roi):
+    def entry_exit_analysis(self, roi_interest, eoe):
         # What do I wanna know
             # How far from 9,21,55 ema was the e/e from?
             # Current bbwp
             # State of RSI
             # Current daily trend
+            # Above or below BMSB
         basic_ee, longs, shorts = self.entry_exit_basic()
 
-        longs_analysis = []
-        short_analysis = []
-        long_bbwp = []
-        long_rsi = []
-        long_ema_l_spread = []
-        long_ema_m_spread = []
-        long_ema_h_spread = []
-        long_daily_ema = []
-        long_roi = []
+        long_entry_timestamp, longs_analysis_entry, long_bbwp, long_rsi, long_ema_l_spread, long_ema_m_spread, \
+        long_ema_h_spread, long_daily_ema, long_roi, long_bmsb = [], [], [], [], [], [], [], [], [], []
 
         for long in longs:
             entry = KCObj(long[0])
             exit = KCObj(long[1])
-            timestamp, close, cross_status, bbwp, emaL, emaM, emaH, daily_ema, rsi = entry.timestamp, entry.close, \
+            timestamp, close, cross_status, bbwp, emaL, emaM, emaH, daily_ema, rsi, bmsb = entry.timestamp, \
+                                                                                          entry.close, \
                                                                       entry.cross_status, entry.bbwp, entry.emaL,\
-                                                                      entry.emaM, entry.emaH, entry.daily_ema, entry.rsi
+                                                                      entry.emaM, entry.emaH, entry.daily_ema, \
+                                                                                     entry.rsi, entry.bmsb
+            ema_l_dif_entry = ema_dif(close, emaL, "long")
+            ema_m_dif_entry = ema_dif(close, emaM, "long")
+            ema_h_dif_entry = ema_dif(close, emaH, "long")
 
-            ema_l_dif = ema_dif(close, emaL, "long")
-            ema_m_dif = ema_dif(close, emaM, "long")
-            ema_h_dif = ema_dif(close, emaH, "long")
-            roi = ema_dif(exit.close, close, "long")
-            longs_analysis.append(
-                {"ema_l_dif": ema_l_dif,
-                 "ema_m_dif": ema_m_dif,
-                 "ema_h_dif": ema_h_dif,
+            ema_l_dif_exit = ema_dif(exit.close, exit.emaL, "long")
+            ema_m_dif_exit = ema_dif(exit.close, exit.emaM, "long")
+            ema_h_dif_exit = ema_dif(exit.close, exit.emaH, "long")
+
+            roi_calculated = ema_dif(exit.close, close, "long")
+            # if roi_calculated > roi_interest:
+            #     print(long)
+            longs_analysis_entry.append(
+                {"ema_l_dif": ema_l_dif_entry,
+                 "ema_m_dif": ema_m_dif_entry,
+                 "ema_h_dif": ema_h_dif_entry,
                  "rsi": rsi,
                  "bbwp": bbwp,
-                 "roi": roi}
+                 "roi": roi_calculated,
+                 "bmsb": bmsb}
             )
-            long_rsi.append(rsi)
-            long_ema_l_spread.append(ema_l_dif)
-            long_ema_m_spread.append(ema_m_dif)
-            long_ema_h_spread.append(ema_h_dif)
-            long_daily_ema.append(daily_ema)
-            long_bbwp.append(bbwp)
-            long_roi.append(roi)
-        for short in shorts:
-            entry = KCObj(short[1])
-            exit = KCObj(short[0])
-            timestamp, close, cross_status, bbwp, emaL, emaM, emaH, daily_ema, rsi = entry.timestamp, entry.close, \
-                                                                      entry.cross_status, entry.bbwp, entry.emaL,\
-                                                                      entry.emaM, entry.emaH, entry.daily_ema, entry.rsi
+            if eoe == "entry":
+                long_entry_timestamp.append(timestamp), long_rsi.append(rsi), long_ema_l_spread.append(
+                    ema_l_dif_entry), \
+                long_ema_m_spread.append(ema_m_dif_entry), long_ema_h_spread.append(ema_h_dif_entry), long_daily_ema.append(daily_ema)
+                long_bbwp.append(bbwp), long_roi.append(roi_calculated), long_bmsb.append(bmsb)
+            if eoe == "exit":
+                long_entry_timestamp.append(exit.timestamp), long_rsi.append(exit.rsi), long_ema_l_spread.append(
+                    ema_l_dif_exit), \
+                long_ema_m_spread.append(ema_m_dif_exit), long_ema_h_spread.append(ema_h_dif_exit), \
+                long_daily_ema.append(daily_ema), long_bbwp.append(bbwp), long_roi.append(roi_calculated)
 
-            ema_l_dif = ema_dif(close, emaL, "short")
-            ema_m_dif = ema_dif(close, emaM, "short")
-            ema_h_dif = ema_dif(close, emaH, "short")
-            roi = ema_dif(close, exit.close, "short")
+            metrics = [("rsi", long_rsi), ("ema_l_spread", long_ema_l_spread),
+                       ("ema_m_spread", long_ema_m_spread), ("ema_h_spread", long_ema_h_spread),
+                       ("daily_ema", long_daily_ema), ("bbwp", long_bbwp), ("roi", long_roi)]
 
-            short_analysis.append(
-                {"ema_l_dif": ema_l_dif,
-                 "ema_m_dif": ema_m_dif,
-                 "ema_h_dif": ema_h_dif,
-                 "rsi": rsi,
-                 "bbwp": bbwp,
-                 "roi": roi}
-            )
-        print(long_roi)
-        #plot longs bbwap entry
-        metrics = [("rsi", long_rsi), ("ema_l_spread",long_ema_l_spread), ("ema_m_spread", long_ema_m_spread),
-                   ("ema_h_spread",long_ema_h_spread), ("daily_ema",long_daily_ema), ("bbwp", long_bbwp), ("roi", long_roi)]
-        print(long_rsi)
-        for metric in metrics:
-            blue = []
-            blue_idx = []
-            red = []
-            red_idx = []
-            for idx in range(len(metric[1])):
-                if long_roi[idx] < 8:
-                    blue.append(metric[1][idx])
-                    blue_idx.append(idx)
-                else:
-                    red.append(metric[1][idx])
-                    red_idx.append(idx)
-            plt.scatter(x=blue_idx, y=blue, c="#00BFFF")
-            plt.scatter(x=red_idx, y=red, c="#FF0000")
-            plt.ylabel(metric[0])
-            plt.figure()
+        #for metric in metrics:
+            # blue = []
+            # blue_idx = []
+            # red = []
+            # red_idx = []
+            # for idx in range(len(metric[1])):
+            #     if long_roi[idx] < roi_interest:
+            #         blue.append(metric[1][idx])
+            #         #blue_idx.append(long_entry_timestamp[idx])
+            #         blue_idx.append(idx)
+            #         blue_dates = [pd.to_datetime(d) for d in blue_idx]
+            #     else:
+            #         red.append(metric[1][idx])
+            #         #red_idx.append(long_entry_timestamp[idx])
+            #         red_idx.append(idx)
+            #         red_dates = [pd.to_datetime(d) for d in red_idx]
+            # plt.scatter(x=blue_idx, y=blue, c="#00BFFF")
+            # plt.scatter(x=red_idx, y=red, c="#FF0000")
+            # #plt.plot(red)
+            # plt.ylabel(metric[0])
+            # # for i, j in zip(red_idx, red):
+            # #     plt.text(i, j+.5, '({}, {}'.format(i, j))
+            # plt.figure()
 
-        plt.show()
+        #Histograms
+        # for m in metrics:
+        #     blue = []
+        #     red = []
+        #     for idx in range(len(m[1])):
+        #         if long_roi[idx] < 10:
+        #             blue.append(m[1][idx])
+        #         else:
+        #             red.append(m[1][idx])
+        #
+        #     #blue
+        #     print("BLUE:", len(blue))
+        #     q25, q75 = np.percentile(blue, [25, 75])
+        #     bin_width = 2 * (q75 - q25) * len(m[1]) ** (-1 / 3)
+        #     bins = round((max(blue) - min(blue)) / bin_width)
+        #     plt.hist(m[1], bins=bins, color='#00BFFF')
+        #
+        #     # plt.hist(m[1], bins=20)
+        #     plt.ylabel(m[0]+"blue")
+        #     plt.figure()
+        #
+        #     #red
+        #     print("RED:", len(red))
+        #     q25, q75 = np.percentile(red, [25, 75])
+        #     bin_width = 2 * (q75 - q25) * len(red) ** (-1 / 3)
+        #     bins = round((max(red) - min(red)) / bin_width)
+        #     plt.hist(red, bins=bins, color='#FF0000')
+        #
+        #     # plt.hist(m[1], bins=20)
+        #     plt.ylabel(m[0] + "red")
+        #     plt.figure()
 
+        #linear regression modeling:
+
+
+        # rsi_x = np.array(long_rsi)
+        # bbwp_x = np.array(long_bbwp)
+        # roi_y = np.array(long_roi)
+        # x = sm.add_constant(rsi_x)
+        # x2 = sm.add_constant(bbwp_x)
+        # lin_model = sm.OLS(x, roi_y)
+        # regr_res = lin_model.fit()
+        # print(regr_res.summary())
+
+
+
+
+
+
+        # blue_x = []
+        # blue_y = []
+        # red_x = []
+        # red_y = []
+        #
+        # for idx in range(len(long_bbwp)):
+        #     if long_roi[idx] < 10:
+        #         blue_x.append(long_bbwp[idx])
+        #         blue_y.append(long_ema_m_spread[idx])
+        #     else:
+        #         red_x.append(long_bbwp[idx])
+        #         red_y.append(long_ema_m_spread[idx])
+        #
+        # plt.scatter(x=blue_x, y=blue_y, c="#00BFFF")
+        # plt.scatter(x=red_x, y=red_y, c="#FF0000")
+        #
+        # cc1 = np.array(blue_x)
+        # cc2 = np.array(blue_y)
+        # cc = np.corrcoef(cc1, cc2)
+        # print(cc)
+        # print(scipy.stats.pearsonr(blue_x, blue_y))
+        # result = scipy.stats.linregress(blue_x, blue_y)
+        # print(result.stderr)
+        #plt.show()
 
 
     def get_roi(self):
@@ -500,7 +609,6 @@ class KrownCrossBackTest:
 
         for long in longs:
             average_roi_list.append(((float(long[1]['close'])/float(long[0]['close']))-1)*100)
-        print(average_roi_list)
 
 
         win_loss = []
@@ -529,7 +637,7 @@ class KrownCrossBackTest:
         for z in average_roi_list:
             #print("trade:", capital)
             capital = capital * (1+(z/100))
-        print(capital)
+        #print(capital)
         # return {
         #         "w_l": w_l,
         #         "average_trade": average_trade,

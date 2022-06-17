@@ -9,7 +9,7 @@ import os
 from DailyTrend import DailyTrend
 from DataGrab import DataGrab
 from Strategy import Strategy
-import tkinter as tk
+from DataGrab import candle_merge, load_np_data_static, load_json_data_static
 np.set_printoptions(threshold=sys.maxsize)
 
 def find(filename, directory):
@@ -28,8 +28,8 @@ if __name__ == '__main__':
     # strat_option = int(input("Please enter number number based on provided options: 1-KrownCross, 2-More to come!"))
     strat_option = 1
     if strat_option == 1:
-        start = datetime(year=2021, month=1, day=1, hour=0, minute=0, second=0).isoformat() + "Z"
-        end = datetime(year=2022, month=3, day=31, hour=0, minute=0, second=0).isoformat() + "Z"
+        start = datetime(year=2011, month=1, day=1, hour=0, minute=0, second=0).isoformat() + "Z"
+        end = datetime(year=2022, month=4, day=30, hour=0, minute=0, second=0).isoformat() + "Z"
         exchange = "gdax"
         ema_l = 9
         ema_m = 21
@@ -49,17 +49,25 @@ if __name__ == '__main__':
         filename = ticker.upper() + time_frame
         market = ticker.upper() + "-USD"
         dg = DataGrab(exchange=exchange, tf=time_frame, market=market, start=start, end=end, file=filename)
-        if not find(filename, "./Data/json/"):
-            dg.set_export_data()
+        # if not find(filename, "./Data/json/"):
+        #     dg.set_export_data()
         #dg.set_export_data()
+
+        # candle_merge("./Data/json/BTC1h", "2h")
+
+        # kc = KrownCrossBackTest(ema_l, ema_m, ema_h, load_np_data_static("BTC2h"), load_json_data_static("BTC2h"),
+        #                         filename,
+        #                         ticker)
         kc = KrownCrossBackTest(ema_l, ema_m, ema_h, dg.load_np_list(), dg.load_json_data(), filename, ticker)
-        if not find (filename, "./Data/kc"):
-            kc.set_krown_cross_json_export()
-        kc.rsi()
+        # if not find (filename, "./Data/kc"):
+        #     kc.set_krown_cross_json_export()
+        kc.set_krown_cross_json_export()
+        #kc.rsi()
+
 
         #kc.entry_exit_analysis('bbwp')
-        kc.get_roi()
-        kc.entry_exit_analysis("any")
+        #kc.get_roi()
+        kc.entry_exit_analysis(10, "entry")
     else:
         print("more to come!")
 

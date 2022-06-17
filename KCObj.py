@@ -12,3 +12,4 @@ class KCObj:
         self.emaH = float(kc_json_obj['emaH'])
         self.daily_ema = float(kc_json_obj['daily_ema'])
         self.rsi = float(kc_json_obj['rsi'])
+        self.bmsb = bool(kc_json_obj['bmsb'])
