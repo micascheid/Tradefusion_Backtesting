@@ -1,5 +1,14 @@
 from datetime import datetime
 
+CLOSE = "close"
+BBWP = "bbwp"
+EMA_LOW = "ema_low"
+EMA_MID = "ema_mid"
+EMA_HIGH = "ema_high"
+DAILY_EMA = "daily_ema"
+RSI = "rsi"
+BMSB = "bmsb"
+
 
 class KCObj:
     def __init__(self, kc_json_obj):
@@ -12,3 +21,5 @@ class KCObj:
         self.emaH = float(kc_json_obj['emaH'])
         self.daily_ema = float(kc_json_obj['daily_ema'])
         self.rsi = float(kc_json_obj['rsi'])
+        self.bmsb = bool(kc_json_obj['bmsb'])
+

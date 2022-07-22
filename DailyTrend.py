@@ -7,7 +7,7 @@ from talib import abstract
 EMA = abstract.Function("EMA")
 ema_daily = 21
 
-
+#DailyTrend pulls aggregate data for a base currency
 class DailyTrend:
     def __init__(self, base):
         self.nomics = API.KEY
@@ -158,6 +158,7 @@ class DailyTrend:
         with open(self.ema_data_file, "r") as btc_daily_trend:
             daily_trend = json.load(btc_daily_trend)
         return daily_trend
+
 
 def json_cleanup(json_obj, missing):
     if missing:
