@@ -6,7 +6,8 @@ from talib import abstract
 from datetime import datetime, timedelta
 from DailyTrend import DailyTrend
 import json
-from KCObj import KCObj
+from KCObj import KCObj as kco
+import KCObj
 from matplotlib import pyplot as plt
 import numpy as np
 import scipy.stats
@@ -15,7 +16,7 @@ import statsmodels.api as sm
 from sklearn import linear_model
 from CSVCreator import CSVCreator
 
-MA = 21
+MA = 13
 LOOKBACK = 252
 EMA = abstract.Function('EMA')
 PRECISION = 4
@@ -140,11 +141,11 @@ class KrownCrossBackTest:
                 if new_cross:
                     total_crosses += 1
                 #Check to see if a limbo occurence exists
-                if CROSS_UP_S in current_cross and not new_cross and el < em:
+                if CROSS_UP_S in current_cross and not new_cross and (el < em or em < eh):
                     cross_occurence[(self.start+timedelta(hours=i)).isoformat()+"Z"] = CROSS_UP_S + LIMBO
                     cross_occurence_list.append(((self.start+timedelta(hours=i)).isoformat() + "Z", current_cross +
                                                  LIMBO))
-                elif CROSS_DOWN_S in current_cross and not new_cross and el > em:
+                elif CROSS_DOWN_S in current_cross and not new_cross and (el > em or em > eh):
                     cross_occurence[(self.start + timedelta(hours=i)).isoformat() + "Z"] = CROSS_DOWN_S + LIMBO
                     cross_occurence_list.append(((self.start + timedelta(hours=i)).isoformat() + "Z", current_cross +
                                                  LIMBO))
@@ -278,12 +279,98 @@ class KrownCrossBackTest:
         file = open('./Data/kc/' + self.kc_file, "r")
         return json.load(file)
 
+    def entry_exit2(self, bbwp_entry, bbwp_exit, rsi_entry, rsi_exit, emaL_entry, emaL_exit, emaM_entry, emaM_exit,
+                   emaH_entry, emaH_exit, daily_ema_entry, daily_ema_exit, bmsb_entry, bmsb_exit, interests):
+        # Other thoughts: Checking which regime BTC is in regarding bull market support band
+        #self.set_krown_cross_json_export()
+        kc_data = self.kc_load()
+        long_positions = []
+        long_positions_dict = {}
+        long_bias = False
+        in_trade = False
+        LIMBO = "limbo"
+        indicator_booleans = []
+        for x in kc_data:
+            # convert json_obj variables back
+            kc_obj = kco(x)
+            timestamp, close, cross_status, bbwp, emaL, emaM, emaH, daily_ema, rsi, bmsb = kc_obj.timestamp, \
+                                                                                        kc_obj.close, \
+                                                                                kc_obj.cross_status, kc_obj.bbwp, kc_obj.emaL, \
+                                                                                kc_obj.emaM, kc_obj.emaH, \
+                                                                                     kc_obj.daily_ema, kc_obj.rsi, \
+                                                                                           kc_obj.bmsb
+            # LONG ENTRY
+            if not in_trade:
+                if "up" in cross_status and not (LIMBO in cross_status):
+                    long_bias = True
+                if long_bias:
+                    ema_low_dif = abs((1-(emaL / close))*100)
+                    ema_mid_dif = abs((1-(emaM / close))*100)
+                    ema_high_dif = abs((1-(emaH / close))*100)
+
+                    if KCObj.BBWP in interests and not bbwp <= bbwp_entry:
+                        continue
+                    if KCObj.RSI in interests and not rsi <= rsi_entry:
+                        continue
+                    if KCObj.EMA_LOW in interests and not ema_low_dif < emaL_entry:
+                        continue
+                    if KCObj.EMA_MID in interests and not ema_mid_dif <= emaM_entry:
+                        continue
+                    if KCObj.EMA_HIGH in interests and not ema_high_dif < emaH_entry:
+                        continue
+                    if KCObj.DAILY_EMA in interests and not daily_ema > daily_ema_entry:
+                        continue
+                    if KCObj.BMSB in interests and not bmsb > bmsb_entry:
+                        continue
+                    entry = kc_obj
+                    in_trade = True
+                    continue
+            # looking for an exit
+            # TODO looking for an exit on long
+            if in_trade:
+                if (bbwp >= 80):
+                    # entry_time = datetime.strptime(entry.timestamp, "%Y-%m-%dT%H:%M:%S")
+                    # exit_time = datetime.strptime(kc_obj.timestamp, "%Y-%m-%dT%H:%M:%S")
+                    duration = (entry.timestamp - kc_obj.timestamp).seconds // 3600
+                    pnl = ((kc_obj.close / entry.close) - 1) * 100
+                    w_l = "w" if pnl > 0 else "l"
+                    dict_obj = {
+                        "timestamp_exit:": kc_obj.timestamp,
+                        "duration": duration,
+                        "pnl": pnl,
+                        "w_l": w_l
+                    }
+                    long_positions_dict[entry.timestamp] = dict_obj
+                    long_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
+                    long_bias = False
+                    in_trade = False
+                    continue
+                if LIMBO in cross_status or "down" in cross_status:
+                    duration = (entry.timestamp - kc_obj.timestamp).seconds // 3600
+                    pnl = ((kc_obj.close / entry.close) - 1) * 100
+                    w_l = "w" if pnl > 0 else "l"
+                    dict_obj = {
+                        "timestamp_exit:": kc_obj.timestamp,
+                        "duration": duration,
+                        "pnl": pnl,
+                        "w_l": w_l
+                    }
+                    long_positions_dict[entry.timestamp] = dict_obj
+                    long_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
+                    long_bias = False
+                    in_trade = False
+                    continue
+
+            # TODO looking for an exit on short
+
+        return long_positions
+
     def entry_exit(self):
         # Other thoughts: Checking which regime BTC is in regarding bull market support band
         self.set_krown_cross_json_export()
         kc_data = self.kc_load()
         positions = []
-        positions_dict={}
+        positions_dict = {}
         global entry
         global exit
         long_bias = False
@@ -291,7 +378,7 @@ class KrownCrossBackTest:
         ema_high_tolerance = 2
         last_entry = ""
         last_exit_time = datetime.strptime(kc_data[0]['timestamp'].strip('Z'), "%Y-%m-%dT%H:%M:%S")
-        global in_trade
+        #global in_trade
         in_trade = False
         LIMBO = "limbo"
         for x in kc_data:
@@ -330,8 +417,6 @@ class KrownCrossBackTest:
             #TODO looking for an exit on long
             if in_trade:
                 if not (LIMBO in cross_status) and (bbwp >= 90):# or close <= emaL):
-                    # entry_time = datetime.strptime(entry.timestamp, "%Y-%m-%dT%H:%M:%S")
-                    # exit_time = datetime.strptime(kc_obj.timestamp, "%Y-%m-%dT%H:%M:%S")
                     duration = (entry.timestamp - kc_obj.timestamp).seconds // 3600
                     pnl = ((kc_obj.close/entry.close)-1)*100
                     w_l = "w" if pnl > 0 else "l"
@@ -355,7 +440,10 @@ class KrownCrossBackTest:
 
         return positions_dict
 
-    def entry_exit_basic(self):
+    def entry_exit_hygrading_best_candle(self):
+        #This function hygrates the best entry and exit candles after the krown cross has occured. This function was
+        # designed to see if those candles exhibited any similiarity amonst the inputs using multivariate linear
+        # regression.
         kc_data = self.kc_load()
         trade_long = False
         trade_short = False
@@ -442,14 +530,14 @@ class KrownCrossBackTest:
         #print("\n".join([str(long) for long in best_ee_long if long[2] == "long"]))
         return ee, best_ee_long, best_ee_short
 
-    def entry_exit_analysis(self, roi_interest, eoe):
+    def entry_exit_analysis_hygrading(self, roi_interest, eoe):
         # What do I wanna know
             # How far from 9,21,55 ema was the e/e from?
             # Current bbwp
             # State of RSI
             # Current daily trend
             # Above or below BMSB
-        basic_ee, longs, shorts = self.entry_exit_basic()
+        basic_ee, longs, shorts = self.entry_exit_hygrading_best_candle()
 
         long_entry_timestamp, longs_analysis_entry, long_bbwp, long_rsi, long_ema_l_spread, long_ema_m_spread, \
         long_ema_h_spread, long_daily_ema, long_roi, long_bmsb = [], [], [], [], [], [], [], [], [], []
@@ -595,9 +683,13 @@ class KrownCrossBackTest:
         # print(result.stderr)
         #plt.show()
 
+    def entry_exit_analysis_2(self, ee):
+        test = 1
+        return test
+
 
     def get_roi(self):
-        basic_ee, longs, shorts = self.entry_exit_basic()
+        basic_ee, longs, shorts = self.entry_exit_hygrading_best_candle()
 
         position_entry_exit = []
         # for entries in positions:
