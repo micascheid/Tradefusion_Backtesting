@@ -372,10 +372,10 @@ class KrownCrossBackTest:
                 ema_high_dif = abs((1 - (emaH / close)) * 100)
                 #GTFO
                 if LIMBO in cross_status or "down" in cross_status:
-                    duration = (entry.timestamp - kc_obj.timestamp).seconds // 3600
+                    duration = (kc_obj.timestamp - entry.timestamp).seconds // 3600
                     pnl = ((kc_obj.close / entry.close) - 1) * 100
                     w_l = "w" if pnl > 0 else "l"
-                    dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "long")
+                    dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "long", entry.bbwp)
                     long_positions_dict_list.append(dict_obj)
                     total_positions_dict_list.append(dict_obj)
                     #long_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
@@ -396,10 +396,10 @@ class KrownCrossBackTest:
 
                 # entry_time = datetime.strptime(entry.timestamp, "%Y-%m-%dT%H:%M:%S")
                 # exit_time = datetime.strptime(kc_obj.timestamp, "%Y-%m-%dT%H:%M:%S")
-                duration = (entry.timestamp - kc_obj.timestamp).seconds // 3600
+                duration = (kc_obj.timestamp - entry.timestamp).seconds // 3600
                 pnl = ((kc_obj.close / entry.close) - 1) * 100
                 w_l = "w" if pnl > 0 else "l"
-                dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "long")
+                dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "long", entry.bbwp)
                 long_positions_dict_list.append(dict_obj)
                 total_positions_dict_list.append(dict_obj)
                 #long_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
@@ -412,10 +412,10 @@ class KrownCrossBackTest:
                 ema_high_dif = abs((1 - (emaH / close)) * 100)
                 # GTFO
                 if LIMBO in cross_status or "up" in cross_status:
-                    duration = (entry.timestamp - kc_obj.timestamp).seconds // 3600
+                    duration = (kc_obj.timestamp - entry.timestamp).seconds // 3600
                     pnl = ((kc_obj.close / entry.close) - 1) * 100
                     w_l = "w" if pnl > 0 else "l"
-                    dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "short")
+                    dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "short", entry.bbwp)
                     short_positions_dict_list.append(dict_obj)
                     total_positions_dict_list.append(dict_obj)
                     short_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
@@ -436,10 +436,10 @@ class KrownCrossBackTest:
 
                 # entry_time = datetime.strptime(entry.timestamp, "%Y-%m-%dT%H:%M:%S")
                 # exit_time = datetime.strptime(kc_obj.timestamp, "%Y-%m-%dT%H:%M:%S")
-                duration = (entry.timestamp - kc_obj.timestamp).seconds // 3600
+                duration = (kc_obj.timestamp - entry.timestamp).seconds // 3600
                 pnl = ((kc_obj.close / entry.close) - 1) * 100
                 w_l = "w" if pnl > 0 else "l"
-                dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "short")
+                dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "short", entry.bbwp)
                 short_positions_dict_list.append(dict_obj)
                 total_positions_dict_list.append(dict_obj)
                 short_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))

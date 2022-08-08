@@ -11,6 +11,7 @@ import fnmatch
 import os
 from DailyTrend import DailyTrend
 from DataGrab import DataGrab
+from matplotlib import pyplot as plt
 from Strategy import Strategy
 from DataGrab import candle_merge, load_np_data_static, load_json_data_static
 np.set_printoptions(threshold=sys.maxsize)
@@ -39,7 +40,7 @@ def bfi_kc_signal_find():
         -Invalidation
     """
     bbwp_entry_l, bbwp_exit_l, bbwp_entry_s, bbwp_exit_s = 50, 85, 50, 80
-    rsi_entry_l, rsi_exit_l, rsi_entry_s, rsi_exit_s = 0, 80, 80, 0
+    rsi_entry_l, rsi_exit_l, rsi_entry_s, rsi_exit_s = 0, 70, 80, 0
     emaL_entry_l, emaL_exit_l, emaL_entry_s, emaL_exit_s = 1, 3, 3, 1
     emaM_entry_l, emaM_exit_l, emaM_entry_s, emaM_exit_s = 1, 3, .5, 2.5
     emaH_entry_l, emaH_exit_l, emaH_entry_s, emaH_exit_s = 0, 3, 0, 3
@@ -67,6 +68,7 @@ def bfi_kc_signal_find():
     for x in range(bbwp_range[1], 110, bbwp_range[2]): #exit: exit start, exit last, step
         for y in range(0, bbwp_range[0], bbwp_range[2]): #entry: 0, last entry, step
             bbwp = [y, x, y, x]
+            rsi = [10, x, y, x]
             positions = kc.entry_exit2(bbwp, rsi, emaL, emaM, emaH, daily_ema, bmsb, interests)[4]
             meta = {
                 "bbwp": "{}-{}".format(str(y), str(x)),
@@ -111,6 +113,7 @@ def bfi_analysis():
         losses = 0
         pnl_total = 0
         capital = 1000
+        capital_list = []
         for y in range(1, len(x[1])):
             pnl = x[1][y].get_pnl()
             winorloss = x[1][y].get_winorloss()
@@ -123,9 +126,11 @@ def bfi_analysis():
             else:
                 losses += 1
             capital = capital * (1+(pnl/100))
-            pnl_total = pnl_total + pnl
+            capital_list.append(capital)
+        # plt.plot(capital_list)
+        # plt.ylabel(x[0]["bbwp"])
+        # plt.show()
         win_ratio = (wins/(wins+losses))
-        average_pnl = (pnl_total/(len(x[1])-1))
 
         result = {
             "bbwp": x[0]["bbwp"],
@@ -138,10 +143,10 @@ def bfi_analysis():
             "max_drawdown": precision(max_drawdown, 2),
             "max_upside": precision(max_upside, 2),
             "w_l": precision(win_ratio, 2),
-            "pnl": precision(average_pnl, 2),
             "capital": precision(capital, 2)
         }
         all_results.append((result, x[1]))
+
     best_result = all_results[0]
     best_return = 0
     for x in all_results:
