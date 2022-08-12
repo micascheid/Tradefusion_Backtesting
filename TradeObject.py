@@ -1,7 +1,7 @@
 
 
 class TradeObject:
-    def __init__(self, time_entry, time_exit, duration, pnl, winorloss, type, bbwp_entry):
+    def __init__(self, time_entry, time_exit, duration, pnl, winorloss, type, bbwp_entry, rsi):
         self.time_entry = time_entry
         self.time_exit = time_exit
         self.duration = duration
@@ -9,6 +9,7 @@ class TradeObject:
         self.winorloss = winorloss
         self.type = type
         self.bbwp_entry = bbwp_entry
+        self.rsi = rsi
 
     def get_json(self):
         return \
@@ -39,7 +40,8 @@ class TradeObject:
         return self.type
 
     def __str__(self):
-        return "{}, {}, type: {}, duration: {}, pnl: {}, bbwp_entry: {}".format(self.time_entry, self.time_exit,
+        return "{}, {}, type: {}, duration: {}, pnl: {}, bbwp_entry: {}, rsi: {}".format(self.time_entry,
+                                                                                         self.time_exit,
                                                                               self.type,
-                                                               self.duration, self.pnl, self.bbwp_entry)
+                                                               self.duration, self.pnl, self.bbwp_entry, self.rsi)
 

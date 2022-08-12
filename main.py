@@ -54,7 +54,7 @@ def bfi_kc_signal_find():
     emaH = [emaH_entry_l, emaH_exit_l, emaH_entry_s, emaH_exit_s]
     daily_ema = [daily_ema_entry_l, daily_ema_exit_l, daily_ema_entry_s, daily_ema_exit_s]
     bmsb = [bmsb_entry_l, bmsb_exit_l, bmsb_entry_s, bmsb_exit_s]
-    interests = [KCObj.BBWP]
+    interests = [KCObj.BBWP, KCObj.EMA_MID]
 
     #entry up to, exit starting at, step
     bbwp_range = [70, 50, 10] #last entry, start exit, step
@@ -68,7 +68,7 @@ def bfi_kc_signal_find():
     for x in range(bbwp_range[1], 110, bbwp_range[2]): #exit: exit start, exit last, step
         for y in range(0, bbwp_range[0], bbwp_range[2]): #entry: 0, last entry, step
             bbwp = [y, x, y, x]
-            rsi = [10, x, y, x]
+            emaM = [.5, 1.5, .5, 1.5]
             positions = kc.entry_exit2(bbwp, rsi, emaL, emaM, emaH, daily_ema, bmsb, interests)[4]
             meta = {
                 "bbwp": "{}-{}".format(str(y), str(x)),
