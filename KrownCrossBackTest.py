@@ -15,6 +15,7 @@ from DataGrab import load_json_data_static
 import statsmodels.api as sm
 from sklearn import linear_model
 from CSVCreator import CSVCreator
+from TradeObject import TradeObject
 
 MA = 13
 LOOKBACK = 252
@@ -279,17 +280,28 @@ class KrownCrossBackTest:
         file = open('./Data/kc/' + self.kc_file, "r")
         return json.load(file)
 
-    def entry_exit2(self, bbwp_entry, bbwp_exit, rsi_entry, rsi_exit, emaL_entry, emaL_exit, emaM_entry, emaM_exit,
-                   emaH_entry, emaH_exit, daily_ema_entry, daily_ema_exit, bmsb_entry, bmsb_exit, interests):
+    def entry_exit2(self, bbwp, rsi, emaL, emaM, emaH, daily_ema, bmsb, interests):
         # Other thoughts: Checking which regime BTC is in regarding bull market support band
         #self.set_krown_cross_json_export()
+        bbwp_entry_l, bbwp_exit_l, bbwp_entry_s, bbwp_exit_s = [x for x in bbwp]
+        rsi_entry_l, rsi_exit_l, rsi_entry_s, rsi_exit_s = [x for x in rsi]
+        emaL_entry_l, emaL_exit_l, emaL_entry_s, emaL_exit_s = [x for x in emaL]
+        emaM_entry_l, emaM_exit_l, emaM_entry_s, emaM_exit_s = [x for x in emaM]
+        emaH_entry_l, emaH_exit_l, emaH_entry_s, emaH_exit_s = [x for x in emaH]
+        daily_ema_entry_l, daily_ema_exit_l, daily_ema_entry_s, daily_ema_exit_s = [x for x in daily_ema]
+        bmsb_entry_l, bmsb_exit_l, bmsb_entry_s, bmsb_exit_s = [x for x in bmsb]
+
         kc_data = self.kc_load()
         long_positions = []
-        long_positions_dict = {}
+        short_positions = []
+        short_positions_dict_list = []
+        long_positions_dict_list = []
+        total_positions_dict_list = []
         long_bias = False
+        short_bias = False
         in_trade = False
         LIMBO = "limbo"
-        indicator_booleans = []
+
         for x in kc_data:
             # convert json_obj variables back
             kc_obj = kco(x)
@@ -299,71 +311,147 @@ class KrownCrossBackTest:
                                                                                 kc_obj.emaM, kc_obj.emaH, \
                                                                                      kc_obj.daily_ema, kc_obj.rsi, \
                                                                                            kc_obj.bmsb
-            # LONG ENTRY
+            # Looks for both LONG and SHORT entry
             if not in_trade:
                 if "up" in cross_status and not (LIMBO in cross_status):
                     long_bias = True
+                if "down" in cross_status and not (LIMBO in cross_status):
+                    short_bias = True
+
                 if long_bias:
                     ema_low_dif = abs((1-(emaL / close))*100)
                     ema_mid_dif = abs((1-(emaM / close))*100)
                     ema_high_dif = abs((1-(emaH / close))*100)
 
-                    if KCObj.BBWP in interests and not bbwp <= bbwp_entry:
+                    if KCObj.BBWP in interests and not bbwp <= bbwp_entry_l:
                         continue
-                    if KCObj.RSI in interests and not rsi <= rsi_entry:
+                    if KCObj.RSI in interests and not rsi <= rsi_entry_l:
                         continue
-                    if KCObj.EMA_LOW in interests and not ema_low_dif < emaL_entry:
+                    if KCObj.EMA_LOW in interests and not ema_low_dif < emaL_entry_l:
                         continue
-                    if KCObj.EMA_MID in interests and not ema_mid_dif <= emaM_entry:
+                    if KCObj.EMA_MID in interests and not ema_mid_dif <= emaM_entry_l:
                         continue
-                    if KCObj.EMA_HIGH in interests and not ema_high_dif < emaH_entry:
+                    if KCObj.EMA_HIGH in interests and not ema_high_dif < emaH_entry_l:
                         continue
-                    if KCObj.DAILY_EMA in interests and not daily_ema > daily_ema_entry:
+                    if KCObj.DAILY_EMA in interests and not daily_ema > daily_ema_entry_l:
                         continue
-                    if KCObj.BMSB in interests and not bmsb > bmsb_entry:
+                    if KCObj.BMSB in interests and not bmsb > bmsb_entry_l:
                         continue
                     entry = kc_obj
                     in_trade = True
                     continue
-            # looking for an exit
-            # TODO looking for an exit on long
-            if in_trade:
-                if (bbwp >= 80):
-                    # entry_time = datetime.strptime(entry.timestamp, "%Y-%m-%dT%H:%M:%S")
-                    # exit_time = datetime.strptime(kc_obj.timestamp, "%Y-%m-%dT%H:%M:%S")
-                    duration = (entry.timestamp - kc_obj.timestamp).seconds // 3600
-                    pnl = ((kc_obj.close / entry.close) - 1) * 100
-                    w_l = "w" if pnl > 0 else "l"
-                    dict_obj = {
-                        "timestamp_exit:": kc_obj.timestamp,
-                        "duration": duration,
-                        "pnl": pnl,
-                        "w_l": w_l
-                    }
-                    long_positions_dict[entry.timestamp] = dict_obj
-                    long_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
-                    long_bias = False
-                    in_trade = False
+
+                if short_bias:
+                    ema_low_dif = abs((1-(emaL / close))*100)
+                    ema_mid_dif = abs((1-(emaM / close))*100)
+                    ema_high_dif = abs((1-(emaH / close))*100)
+
+                    if KCObj.BBWP in interests and not bbwp <= bbwp_entry_s:
+                        continue
+                    if KCObj.RSI in interests and not rsi <= rsi_entry_s:
+                        continue
+                    if KCObj.EMA_LOW in interests and not ema_low_dif < emaL_entry_s:
+                        continue
+                    if KCObj.EMA_MID in interests and not ema_mid_dif <= emaM_entry_s:
+                        continue
+                    if KCObj.EMA_HIGH in interests and not ema_high_dif < emaH_entry_s:
+                        continue
+                    if KCObj.DAILY_EMA in interests and not daily_ema > daily_ema_entry_s:
+                        continue
+                    if KCObj.BMSB in interests and not bmsb > bmsb_entry_s:
+                        continue
+                    entry = kc_obj
+                    in_trade = True
                     continue
+
+            # looking for ideal exits
+
+            if in_trade and long_bias:
+                ema_low_dif = abs((1 - (emaL / close)) * 100)
+                ema_mid_dif = abs((1 - (emaM / close)) * 100)
+                ema_high_dif = abs((1 - (emaH / close)) * 100)
+                #GTFO
                 if LIMBO in cross_status or "down" in cross_status:
-                    duration = (entry.timestamp - kc_obj.timestamp).seconds // 3600
+                    duration = (kc_obj.timestamp - entry.timestamp).total_seconds() // 3600
                     pnl = ((kc_obj.close / entry.close) - 1) * 100
                     w_l = "w" if pnl > 0 else "l"
-                    dict_obj = {
-                        "timestamp_exit:": kc_obj.timestamp,
-                        "duration": duration,
-                        "pnl": pnl,
-                        "w_l": w_l
-                    }
-                    long_positions_dict[entry.timestamp] = dict_obj
-                    long_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
+                    dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "long", entry.bbwp,
+                                           entry.rsi)
+                    long_positions_dict_list.append(dict_obj)
+                    total_positions_dict_list.append(dict_obj)
+                    #long_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
                     long_bias = False
                     in_trade = False
                     continue
 
-            # TODO looking for an exit on short
+                if KCObj.BBWP in interests and bbwp <= bbwp_exit_l:
+                    continue
+                if KCObj.RSI in interests and rsi <= rsi_exit_l:
+                    continue
+                if KCObj.EMA_LOW in interests and ema_low_dif <= emaL_exit_l:
+                    continue
+                if KCObj.EMA_MID in interests and ema_mid_dif <= emaM_exit_l:
+                    continue
+                if KCObj.EMA_HIGH in interests and ema_high_dif <= emaH_exit_l:
+                    continue
 
-        return long_positions
+                # entry_time = datetime.strptime(entry.timestamp, "%Y-%m-%dT%H:%M:%S")
+                # exit_time = datetime.strptime(kc_obj.timestamp, "%Y-%m-%dT%H:%M:%S")
+                duration = (kc_obj.timestamp - entry.timestamp).total_seconds() // 3600
+                pnl = ((kc_obj.close / entry.close) - 1) * 100
+                w_l = "w" if pnl > 0 else "l"
+                dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "long", entry.bbwp,
+                                       entry.rsi)
+                long_positions_dict_list.append(dict_obj)
+                total_positions_dict_list.append(dict_obj)
+                #long_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
+                long_bias = False
+                in_trade = False
+
+            if in_trade and short_bias:
+                ema_low_dif = abs((1 - (emaL / close)) * 100)
+                ema_mid_dif = abs((1 - (emaM / close)) * 100)
+                ema_high_dif = abs((1 - (emaH / close)) * 100)
+                # GTFO
+                if LIMBO in cross_status or "up" in cross_status:
+                    duration = (kc_obj.timestamp - entry.timestamp).total_seconds() // 3600
+                    pnl = ((kc_obj.close / entry.close) - 1) * 100
+                    w_l = "w" if pnl > 0 else "l"
+                    dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "short",
+                                           entry.bbwp, entry.rsi)
+                    short_positions_dict_list.append(dict_obj)
+                    total_positions_dict_list.append(dict_obj)
+                    short_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
+                    short_bias = False
+                    in_trade = False
+                    continue
+
+                if KCObj.BBWP in interests and bbwp <= bbwp_exit_s:
+                    continue
+                if KCObj.RSI in interests and rsi <= rsi_exit_s:
+                    continue
+                if KCObj.EMA_LOW in interests and ema_low_dif <= emaL_exit_s:
+                    continue
+                if KCObj.EMA_MID in interests and ema_mid_dif <= emaM_exit_s:
+                    continue
+                if KCObj.EMA_HIGH in interests and ema_high_dif <= emaH_exit_s:
+                    continue
+
+                # entry_time = datetime.strptime(entry.timestamp, "%Y-%m-%dT%H:%M:%S")
+                # exit_time = datetime.strptime(kc_obj.timestamp, "%Y-%m-%dT%H:%M:%S")
+                duration = (kc_obj.timestamp - entry.timestamp).total_seconds() // 3600
+                pnl = ((kc_obj.close / entry.close) - 1) * 100
+                w_l = "w" if pnl > 0 else "l"
+                dict_obj = TradeObject(entry.timestamp, kc_obj.timestamp, duration, pnl, w_l, "short", entry.bbwp,
+                                       entry.rsi)
+                short_positions_dict_list.append(dict_obj)
+                total_positions_dict_list.append(dict_obj)
+                short_positions.append(((entry.timestamp, entry.close), (kc_obj.timestamp, kc_obj.close), duration))
+                short_bias = False
+                in_trade = False
+
+        return long_positions, short_positions, long_positions_dict_list, short_positions_dict_list, \
+               total_positions_dict_list
 
     def entry_exit(self):
         # Other thoughts: Checking which regime BTC is in regarding bull market support band
@@ -686,6 +774,40 @@ class KrownCrossBackTest:
     def entry_exit_analysis_2(self, ee):
         test = 1
         return test
+
+    def get_roi2(self, long_dict):
+        longs = long_dict
+        longs_len = len(longs)
+        average_trade_time = 0
+        average_pnl = 0
+        total_w = 0
+        total_l = 0
+        w_l = 0
+        #general stats
+        for long in longs:
+            average_trade_time = average_trade_time + long["duration"]
+            average_pnl = average_pnl + long["pnl"]
+            if long["w_l"] == "w":
+                total_w = total_w + 1
+            if long["w_l"] == "l":
+                total_l = total_l + 1
+        average_trade_time = average_trade_time/longs_len
+        average_pnl = average_pnl/longs_len
+        w_l = (total_w)/(total_w + total_l)
+
+        #backtest trade
+        capital = 100
+        for long in longs:
+            capital = capital * (1 + (long["pnl"]/100))
+        print(capital)
+        return {
+            "average_time": average_trade_time,
+            "average_pnl": average_pnl,
+            "w_l": w_l
+        }
+
+
+
 
 
     def get_roi(self):
