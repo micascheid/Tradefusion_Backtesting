@@ -5,6 +5,11 @@ import numpy as np
 from datetime import datetime, timedelta
 from talib import abstract
 
+#globals
+IN = "in"
+out = "out"
+
+
 def set_data_np_static(json_file_name, tf):
     with open("./Data/json/" + json_file_name, "r") as json_file:
         json_data = json.load(json_file)
@@ -135,6 +140,7 @@ def dup_check(json_data_list):
         print("not dupes!")
         return False
 
+
 def candle_merge_weekly(json_file_name, tf_wanted):
     SMA = abstract.Function("SMA")
     WEEKLY_SMA = 20
@@ -194,6 +200,7 @@ def candle_merge_weekly(json_file_name, tf_wanted):
         btc_ema_file.close()
     return merged_candles
 
+
 def candle_merge(json_file_name, tf_wanted):
 
     #hard coded for now
@@ -238,6 +245,7 @@ def candle_merge(json_file_name, tf_wanted):
     set_data_np_static("BTC"+tf_wanted, 2)
     return merged_candles
 
+
 def check_data_set_times(results):
     HOUR_ADD = timedelta(hours=1)
     time_compare = results[0]['timestamp']
@@ -254,9 +262,10 @@ def check_data_set_times(results):
 
     return missing_time
 
+
 class DataGrab:
     start = 0
-    def __init__(self, exchange, tf, market, start, end, file):
+    def __init__(self, exchange, tf, market, start, end, file, in_sample_type):
         self.exchange = exchange
         self.tf = tf
         self.market = market
@@ -264,6 +273,8 @@ class DataGrab:
         self.end = end
         self.file = file
         self.nomics = API.KEY
+        self.json_dir = "./Data/json/InSample/" if in_sample_type else "./Data/json/OutOfSample/"
+        self.npy_dir = "./Data/npy/InSample/" if in_sample_type else "./Data/npy/OutOfSample/"
 
     def api_call(self, start, end, aggregate):
         if aggregate:
@@ -362,21 +373,19 @@ class DataGrab:
 
     def set_export_data(self):
         np_list, raw_list = self.get_data_np()
-        np.save('./Data/npy/'+self.file+".npy", np_list, allow_pickle=True)
+        np.save(self.npy_dir + self.file+".npy", np_list, allow_pickle=True)
 
         json_string = json.dumps(raw_list)
-        file = open('./Data/json/'+self.file, 'w')
+        file = open(self.json_dir + self.file, 'w')
         file.write(json_string)
         file.close()
 
     def load_np_list(self):
-        npy_lists = np.load('./Data/npy/' + self.file + '.npy', allow_pickle=True)
+        npy_lists = np.load(self.npy_dir + self.file + '.npy', allow_pickle=True)
         return npy_lists.item()
 
-
-
     def load_json_data(self):
-        with open("./Data/json/"+self.file) as json_file:
+        with open(self.json_dir + self.file) as json_file:
             json_data = json.load(json_file)
             json_file.close()
         return json_data

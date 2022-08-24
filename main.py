@@ -54,7 +54,7 @@ def bfi_kc_signal_find():
     emaH = [emaH_entry_l, emaH_exit_l, emaH_entry_s, emaH_exit_s]
     daily_ema = [daily_ema_entry_l, daily_ema_exit_l, daily_ema_entry_s, daily_ema_exit_s]
     bmsb = [bmsb_entry_l, bmsb_exit_l, bmsb_entry_s, bmsb_exit_s]
-    interests = [KCObj.BBWP, KCObj.EMA_MID]
+    interests = [KCObj.BBWP]
 
     #entry up to, exit starting at, step
     bbwp_range = [70, 50, 10] #last entry, start exit, step
@@ -68,7 +68,9 @@ def bfi_kc_signal_find():
     for x in range(bbwp_range[1], 110, bbwp_range[2]): #exit: exit start, exit last, step
         for y in range(0, bbwp_range[0], bbwp_range[2]): #entry: 0, last entry, step
             bbwp = [y, x, y, x]
+            emaL = [.1, 1.5, .1, 1.5]
             emaM = [.5, 1.5, .5, 1.5]
+
             positions = kc.entry_exit2(bbwp, rsi, emaL, emaM, emaH, daily_ema, bmsb, interests)[4]
             meta = {
                 "bbwp": "{}-{}".format(str(y), str(x)),
@@ -81,96 +83,91 @@ def bfi_kc_signal_find():
             }
             results_totals.append((meta, positions))
 
-    #Example of a tested iteration will tell me the bbwp range, rsi range, emaL,
-    """
-    result = {
-        "bbwp": "10,
-        "rsi": ,
-        "emaL": ,
-        "emaM": ,
-        "emaH": ,
-        "daily_ema_pnl": ,
-        "bmsb": , #Measure of performance difference above bmsb vs below. above_pnl/below_pnl
-        "max_drawdown": ,
-        "max_upside": ,
-        "w_l": ,
-        "pnl": ,
-    }
-    """
     return results_totals
+
+
+def bfi_kc_signal_find_bmsb_split():
+    all_trades = bfi_kc_signal_find()
+    above_bmsb_results = []
+    below_bmsb_results = []
+
+    for i in all_trades:
+        above = []
+        below = []
+        for j in i[1]:
+            if j.bmsb:
+                above.append(j)
+            else:
+                below.append(j)
+        above_bmsb_results.append((i[0], above))
+        below_bmsb_results.append((i[0], below))
+
+    return all_trades, above_bmsb_results, below_bmsb_results
+
+
+def bfi_analysis_trade_results():
+    total_results = bfi_kc_signal_find_bmsb_split()
+    brokenup_by_bmsb = []
+    all_results = []
+    for i in total_results:
+        for j in i:
+            max_drawdown = 1000
+            max_upside = -1000
+            wins = 0
+            losses = 0
+            pnl_total = 0
+            capital = 1000
+            capital_list = []
+            for y in range(1, len(j[1])):
+                pnl = j[1][y].get_pnl()
+                winorloss = j[1][y].get_winorloss()
+                if pnl < max_drawdown:
+                    max_drawdown = pnl
+                if pnl > max_upside:
+                    max_upside = pnl
+                if winorloss == "w":
+                    wins += 1
+                else:
+                    losses += 1
+                capital = capital * (1+(pnl/100))
+                capital_list.append(capital)
+            win_ratio = (wins/(wins+losses))
+
+            result = {
+                "bbwp": j[0]["bbwp"],
+                "rsi": j[0]["rsi"],
+                "emaL": j[0]["emaL"],
+                "emaM": j[0]["emaM"],
+                "emaH": j[0]["emaH"],
+                "daily_ema_pnl": j[0]["rsi"],
+                "bmsb": "NA",  # Measure of performance difference above bmsb vs below. above_pnl/below_pnl
+                "max_drawdown": precision(max_drawdown, 2),
+                "max_upside": precision(max_upside, 2),
+                "w_l": precision(win_ratio, 2),
+                "capital": precision(capital, 2)
+            }
+            all_results.append((result, j[1]))
+        brokenup_by_bmsb.append(all_results)
+        all_results = []
+    return brokenup_by_bmsb
 
 def bfi_analysis():
     """
         This function returns the best result of the bfi_kc_signal_find()
     """
-    results = bfi_kc_signal_find()
-
+    #Grab get results of bfi test which has object = [({meta}, all trades),({meta}, all_trades)]
+    total_trades_split_by_bmsb = bfi_analysis_trade_results()
     all_results = []
-    for x in results:
-        max_drawdown = 1000
-        max_upside = -1000
-        wins = 0
-        losses = 0
-        pnl_total = 0
-        capital = 1000
-        capital_list = []
-        for y in range(1, len(x[1])):
-            pnl = x[1][y].get_pnl()
-            winorloss = x[1][y].get_winorloss()
-            if pnl < max_drawdown:
-                max_drawdown = pnl
-            if pnl > max_upside:
-                max_upside = pnl
-            if winorloss == "w":
-                wins += 1
-            else:
-                losses += 1
-            capital = capital * (1+(pnl/100))
-            capital_list.append(capital)
-        # plt.plot(capital_list)
-        # plt.ylabel(x[0]["bbwp"])
-        # plt.show()
-        win_ratio = (wins/(wins+losses))
 
-        result = {
-            "bbwp": x[0]["bbwp"],
-            "rsi": x[0]["rsi"],
-            "emaL": x[0]["emaL"],
-            "emaM": x[0]["emaM"],
-            "emaH": x[0]["emaH"],
-            "daily_ema_pnl": x[0]["rsi"],
-            "bmsb": "NA",  # Measure of performance difference above bmsb vs below. above_pnl/below_pnl
-            "max_drawdown": precision(max_drawdown, 2),
-            "max_upside": precision(max_upside, 2),
-            "w_l": precision(win_ratio, 2),
-            "capital": precision(capital, 2)
-        }
-        all_results.append((result, x[1]))
-
-    best_result = all_results[0]
-    best_return = 0
-    for x in all_results:
-        if float(x[0]["capital"]) > best_return:
-            best_return = float(x[0]["capital"])
-            best_result = x
-    [print(best_result[1][i]) for i in range(1, len(best_result[1]))]
-    return all_results, best_result
-
-    """
-        result = {
-            "bbwp": "10,
-            "rsi": ,
-            "emaL": ,
-            "emaM": ,
-            "emaH": ,
-            "daily_ema_pnl": ,
-            "bmsb": , #Measure of performance difference above bmsb vs below. above_pnl/below_pnl
-            "max_drawdown": ,
-            "max_upside": ,
-            "w_l": ,
-            "pnl": ,
-        }
-        """
+    for i in total_trades_split_by_bmsb:
+        best_result = i[0]
+        best_return = 0
+        for j in i:
+            if float(j[0]["capital"]) > best_return:
+                best_return = float(j[0]["capital"])
+                best_result = j
+        all_results.append(best_result)
+    return all_results
 
 
 if __name__ == '__main__':
@@ -183,7 +180,10 @@ if __name__ == '__main__':
     strat_option = 1
     if strat_option == 1:
         start = datetime(year=2011, month=1, day=1, hour=0, minute=0, second=0).isoformat() + "Z"
-        end = datetime(year=2022, month=4, day=30, hour=0, minute=0, second=0).isoformat() + "Z"
+        end = datetime(year=2017, month=12, day=16, hour=0, minute=0, second=0).isoformat() + "Z"
+
+        # start = datetime(year=2017, month=12, day=17, hour=0, minute=0, second=0).isoformat() + "Z"
+        # end = datetime(year=2022, month=8, day=21, hour=0, minute=0, second=0).isoformat() + "Z"
         exchange = "gdax"
         ema_l = 9
         ema_m = 21
@@ -204,10 +204,11 @@ if __name__ == '__main__':
         #file_data_names
         filename = ticker.upper() + time_frame
         market = ticker.upper() + "-USD"
-        dg = DataGrab(exchange=exchange, tf=time_frame, market=market, start=start, end=end, file=filename)
+        dg = DataGrab(exchange=exchange, tf=time_frame, market=market, start=start, end=end, file=filename,
+                      in_sample_type=True)
         # if not find(filename, "./Data/json/"):
         #     dg.set_export_data()
-        #dg.set_export_data()
+        dg.set_export_data()
 
         # candle_merge("./Data/json/BTC1h", "2h")
 
@@ -223,7 +224,11 @@ if __name__ == '__main__':
         #kc.entry_exit_analysis('bbwp')
         #kc.get_roi()
         total_time = time.time()
-        print(bfi_analysis()[1][0])
+        analysis = bfi_analysis()
+        for x in analysis:
+            print(x[0])
+        # for y in analysis[0][1]:
+        #     print(y)
         total_time = time.time() - total_time
         print("Run Time: {}".format(total_time))
     else:
