@@ -251,6 +251,10 @@ class KrownCrossBackTest:
             date_only = datetime.strptime(time.strip("Z"), "%Y-%m-%dT%H:%M:%S").replace(hour=0, minute=0,
                                                                                         second=0).isoformat() + "Z"
             bmsb = False
+            bbwp_expansion = 0
+            if x != 0:
+                bbwp_expansion = str(precision((bbwp[(x-start_time)+1]-bbwp[x-start_time]), PRECISION))
+
             if (iso_datetime_convert(self.json_data[x]['timestamp']) - iso_datetime_convert(
                     time_keep_start)).total_seconds() >= 604800:
                 time_keep_start = next(BTC_WEEKLY_NEW, None)
@@ -264,6 +268,7 @@ class KrownCrossBackTest:
                 "close": str(precision(float(self.json_data[x]['close']), 4)),
                 "cross_status": str(cross_list[x-ema_start][1]),
                 "bbwp": str(precision((bbwp[(x-start_time)+1]), PRECISION)),
+                "bbwp_expansion": bbwp_expansion,
                 "rsi": precision(rsi[x-start_time], PRECISION),
                 "emaL": str(emaL[x]),
                 "emaM": str(emaM[x]),

@@ -11,9 +11,8 @@ import fnmatch
 import os
 from DailyTrend import DailyTrend
 from DataGrab import DataGrab
-from matplotlib import pyplot as plt
 from Strategy import Strategy
-from DataGrab import candle_merge, load_np_data_static, load_json_data_static
+from DataGrab import candle_merge, candle_merge_weekly, set_data_np_static, load_np_data_static, load_json_data_static
 np.set_printoptions(threshold=sys.maxsize)
 
 
@@ -176,7 +175,7 @@ if __name__ == '__main__':
     # json_file = './Data/json/' + file_name
     #Select which strat to use:
 
-    # strat_option = int(input("Please enter number number based on provided options: 1-KrownCross, 2-More to come!"))
+    # strat_option = int(input("Please enter number based on provided options: 1-KrownCross, 2-More to come!"))
     strat_option = 1
     if strat_option == 1:
         start = datetime(year=2011, month=1, day=1, hour=0, minute=0, second=0).isoformat() + "Z"
@@ -194,8 +193,12 @@ if __name__ == '__main__':
         time_frame = str(input("Enter time frame based on the following options | 30m, 1h, 4h, 1d - "))
         print("Collecting Data from inception of the token... This shouldn't take any loner than a minute or so,")
         print("Lets gather some information on the krown cross back test to perform")
-        # dt = DailyTrend("BTC")
-        # dt.set_ema_data()
+
+        dt = DailyTrend("BTC")
+
+        dt.set_daily_data()
+        dt.set_np_data()
+        dt.set_ema_data()
 
         # ema_l = int(input("Enter the quickest moving ema - ") or ema_l)
         # ema_m = int(input("Enter the second quickest moving ema - ") or ema_m)
@@ -209,6 +212,8 @@ if __name__ == '__main__':
         # if not find(filename, "./Data/json/"):
         #     dg.set_export_data()
         dg.set_export_data()
+        candle_merge_weekly("BTCJSONFinal", "1w")
+        set_data_np_static("BTC1w", "1w")
 
         # candle_merge("./Data/json/BTC1h", "2h")
 
@@ -216,9 +221,9 @@ if __name__ == '__main__':
         #                         filename,
         #                         ticker)
         kc = KrownCrossBackTest(ema_l, ema_m, ema_h, dg.load_np_list(), dg.load_json_data(), filename, ticker)
-        # if not find (filename, "./Data/kc"):
-        #     kc.set_krown_cross_json_export()
-        #kc.set_krown_cross_json_export()
+        if not find(filename, "./Data/kc"):
+            kc.set_krown_cross_json_export()
+        kc.set_krown_cross_json_export()
         #kc.rsi()
 
         #kc.entry_exit_analysis('bbwp')

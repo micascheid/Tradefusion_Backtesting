@@ -145,7 +145,7 @@ def candle_merge_weekly(json_file_name, tf_wanted):
     SMA = abstract.Function("SMA")
     WEEKLY_SMA = 20
     #hard coded for now
-    conversion = int(tf_wanted[:-1])
+    #conversion = int(tf_wanted[:-1])
 
     with open("./Data/json/"+json_file_name, "r") as json_file:
         json_data = json.load(json_file)
